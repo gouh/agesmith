@@ -109,6 +109,33 @@ age-keygen -o ~/.config/sops/age/keys.txt
 
 ## 🚀 Installation
 
+### Quick Install (Recommended)
+
+**Linux/macOS:**
+```bash
+curl -sSL https://raw.githubusercontent.com/yourusername/agesmith/main/scripts/install.sh | bash
+```
+
+This will automatically:
+- Detect your OS and architecture
+- Download the correct binary
+- Verify the checksum
+- Install to `~/.local/bin/`
+
+### Using Makefile (For Developers)
+
+```bash
+# Clone the repository
+git clone https://github.com/yourusername/agesmith.git
+cd agesmith
+
+# Build and install
+make build
+make install
+```
+
+See [Makefile Documentation](docs/MAKEFILE.md) for all available commands.
+
 ### From Source
 
 ```bash
@@ -122,10 +149,31 @@ cargo build --release
 # Binary will be at: ./target/release/agesmith
 ```
 
-### Install Globally
+### Manual Installation
+
+1. Download the binary for your platform from [Releases](https://github.com/yourusername/agesmith/releases)
+2. Verify the checksum (see [Installation Guide](scripts/README.md))
+3. Make it executable: `chmod +x agesmith-*`
+4. Move to PATH: `sudo mv agesmith-* /usr/local/bin/agesmith`
+
+### Building for Multiple Platforms
 
 ```bash
-cargo install --path .
+# Requires cross: cargo install cross
+make build-all
+
+# Binaries will be in dist/ directory
+```
+
+### Verify Installation
+
+```bash
+# Check version
+agesmith --version
+
+# Verify checksum
+shasum -a 256 $(which agesmith)
+# Compare with checksums.txt from the release
 ```
 
 ## 💻 Usage
@@ -241,6 +289,7 @@ fg = [255, 255, 255]
 
 ## 📚 Documentation
 
+- **[Makefile Guide](docs/MAKEFILE.md)** - Build, test, and release commands
 - **[Testing Guide](docs/TESTING.md)** - Test suite documentation
 - **[Writing Tests](docs/WRITING_TESTS.md)** - How to write new tests
 - **[Roadmap](docs/ROADMAP.md)** - Project goals and planned features
@@ -275,14 +324,16 @@ AgeSmith has a comprehensive test suite with **80+ tests**:
 
 ```bash
 # Run all tests
-cargo test
+make test
 
 # Run with output
-cargo test -- --nocapture
+make test-verbose
 
-# Run specific test category
-cargo test --test config_test
-cargo test --test crud_operations_test
+# Check code quality
+make check
+
+# Format code
+make fmt
 ```
 
 See [Testing Documentation](docs/TESTING.md) for details.
@@ -303,14 +354,26 @@ Contributions are welcome! Here's how you can help:
 # Clone and build
 git clone https://github.com/yourusername/agesmith.git
 cd agesmith
-cargo build
+make build
 
 # Run tests
-cargo test
+make test
 
 # Check code quality
-cargo clippy
-cargo fmt --check
+make check
+make fmt
+```
+
+### Release Process
+
+```bash
+# Bump version (patch/minor/major)
+make bump-patch
+
+# Build for all platforms
+make build-all
+
+# Binaries will be in dist/
 ```
 
 ## 📝 License

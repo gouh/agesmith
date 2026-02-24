@@ -294,7 +294,7 @@ impl I18n {
             "confirm_y",
             ("[y] Confirmar eliminación", "[y] Confirm deletion"),
         );
-        translations.insert("cancel_n", ("[n] Cancelar", "[n] Cancel]"));
+        translations.insert("cancel_n", ("[n] Cancelar", "[n] Cancel"));
         translations.insert("move_cursor", ("[←→] Mover cursor", "[←→] Move cursor"));
         translations.insert("home_end", ("[Home/End] Inicio/Fin", "[Home/End] Home/End"));
         translations.insert("settings_cmd", ("[Ctrl+S] Settings", "[Ctrl+S] Settings"));
@@ -727,6 +727,25 @@ impl I18n {
         translations.insert("decrypting", ("Desencriptando", "Decrypting"));
         translations.insert("saving", ("Guardando", "Saving"));
         translations.insert("current_path", ("Ruta actual", "Current path"));
+        translations.insert("settings_title", ("⚙️  Configuración [Ctrl+S]", "⚙️  Settings [Ctrl+S]"));
+        translations.insert("change", ("Cambiar", "Change"));
+        translations.insert("close", ("Cerrar", "Close"));
+        translations.insert("cancel", ("Cancelar", "Cancel"));
+        translations.insert("confirm", ("Confirmar", "Confirm"));
+        translations.insert("na", ("N/D", "N/A"));
+        translations.insert("unknown", ("Desconocido", "Unknown"));
+        translations.insert("create_encrypted_file_title", ("🔐 Crear archivo encriptado con SOPS", "🔐 Create encrypted file with SOPS"));
+        translations.insert("file_name_prompt", ("Nombre del archivo (Enter para secrets.{})", "File name (Enter for secrets.{})"));
+        translations.insert("select_file_format_title", ("📄 Seleccionar formato de archivo para SOPS", "📄 Select file format for SOPS"));
+        translations.insert("environment_variables", ("Variables de entorno (.env)", "Environment variables (.env)"));
+        translations.insert("json_config", ("Configuración JSON (.json)", "JSON configuration (.json)"));
+        translations.insert("yaml_config", ("Configuración YAML (.yaml/.yml)", "YAML configuration (.yaml/.yml)"));
+        translations.insert("ini_config", ("Configuración INI (.ini)", "INI configuration (.ini)"));
+        translations.insert("value_field_generate", ("Valor | [Ctrl+g] Generar | Usa \"texto\" para forzar string", "Value | [Ctrl+g] Generate | Use \"text\" to force string"));
+        translations.insert("new_folder_title_help", ("📁 Nueva Carpeta | [Enter] Crear | [Esc] Cancelar", "📁 New Folder | [Enter] Create | [Esc] Cancel"));
+        translations.insert("rename_title_help", ("✏️ Renombrar | [Enter] Guardar | [Esc] Cancelar", "✏️ Rename | [Enter] Save | [Esc] Cancel"));
+        translations.insert("create_encrypted_file_title_help", ("🔐 Crear archivo encriptado con SOPS | [Enter] Crear | [Esc] Cancelar", "🔐 Create encrypted file with SOPS | [Enter] Create | [Esc] Cancel"));
+        translations.insert("select_file_format_title_help", ("📄 Seleccionar formato de archivo para SOPS | [↑↓] Navegar | [Enter] Continuar | [Esc] Cancelar", "📄 Select file format for SOPS | [↑↓] Navigate | [Enter] Continue | [Esc] Cancel"));
 
         // Settings
         translations.insert("settings_theme", ("Tema", "Theme"));

@@ -189,7 +189,7 @@ fn render_settings_modal(f: &mut Frame, app: &App, area: Rect) {
 
     let block = Block::default()
         .borders(Borders::ALL)
-        .title("⚙️  Settings [Ctrl+S]")
+        .title(app.i18n.t("settings_title"))
         .title_style(
             Style::default()
                 .fg(Color::Rgb(
@@ -362,11 +362,7 @@ fn render_settings_modal(f: &mut Frame, app: &App, area: Rect) {
             ),
             Span::raw(format!(
                 "{}  ",
-                if app.i18n.t("settings_change").contains("change") {
-                    "Change"
-                } else {
-                    "Cambiar"
-                }
+                app.i18n.t("change")
             )),
             Span::styled(
                 "[s] ",
@@ -381,11 +377,7 @@ fn render_settings_modal(f: &mut Frame, app: &App, area: Rect) {
                 "[Esc] ",
                 Style::default().fg(Color::Rgb(theme.error.0, theme.error.1, theme.error.2)),
             ),
-            Span::raw(if app.i18n.t("cmd_cancel").contains("Cancel") {
-                "Close"
-            } else {
-                "Cerrar"
-            }),
+            Span::raw(app.i18n.t("close")),
         ]),
     ];
     let help = Paragraph::new(help_text)
@@ -880,7 +872,7 @@ fn render_edit_modal(f: &mut Frame, app: &mut App) {
     f.render_widget(key_input, chunks[0]);
 
     let value_title = if app.editing_field == 1 {
-        "Valor | [Ctrl+g] Generar | Usa \"texto\" para forzar string".to_string()
+        app.i18n.t("value_field_generate").to_string()
     } else {
         app.i18n.t("value_field").to_string()
     };
@@ -923,15 +915,51 @@ fn render_edit_modal(f: &mut Frame, app: &mut App) {
 }
 
 fn render_confirm_modal(f: &mut Frame, app: &App) {
-    let area = centered_rect(50, 15, f.area());
+    let area = centered_rect(50, 20, f.area());
     f.render_widget(Clear, area);
 
-    let confirm = Paragraph::new(app.i18n.t("confirm_delete"))
+    let text = vec![
+        Line::from(""),
+        Line::from(Span::styled(
+            app.i18n.t("confirm_delete"),
+            Style::default()
+                .fg(Color::Rgb(255, 255, 255))
+                .add_modifier(Modifier::BOLD),
+        )),
+        Line::from(""),
+        Line::from(Span::styled(
+            app.i18n.t("action_irreversible"),
+            Style::default().fg(Color::Rgb(239, 83, 80)),
+        )),
+        Line::from(""),
+        Line::from(vec![
+            Span::styled(
+                "[y] ",
+                Style::default()
+                    .fg(Color::Rgb(239, 83, 80))
+                    .add_modifier(Modifier::BOLD),
+            ),
+            Span::raw(format!(
+                "{}     ",
+                app.i18n.t("confirm")
+            )),
+            Span::styled(
+                "[n] ",
+                Style::default()
+                    .fg(Color::Rgb(102, 187, 106))
+                    .add_modifier(Modifier::BOLD),
+            ),
+            Span::raw(app.i18n.t("cancel")),
+        ]),
+    ];
+
+    let confirm = Paragraph::new(text)
         .style(
             Style::default()
                 .fg(Color::Rgb(255, 255, 255))
                 .bg(Color::Rgb(38, 50, 56)),
         )
+        .alignment(Alignment::Center)
         .block(
             Block::default()
                 .borders(Borders::ALL)
@@ -1175,8 +1203,9 @@ fn get_footer_text(app: &App) -> String {
                 app.i18n.t("cmd_help")
             ),
             InputMode::Settings => format!(
-                "{} | [←→] Change | {} | {}",
+                "{} | [←→] {} | {} | {}",
                 app.i18n.t("cmd_navigate"),
+                app.i18n.t("change"),
                 app.i18n.t("cmd_save"),
                 app.i18n.t("cmd_cancel")
             ),
@@ -1249,8 +1278,8 @@ fn render_key_manager_modal(f: &mut Frame, app: &App) {
         .iter()
         .enumerate()
         .map(|(i, key)| {
-            let name = key.comment.as_deref().unwrap_or("Unnamed");
-            let pub_key = key.public_key.as_deref().unwrap_or("N/A");
+            let name = key.comment.as_deref().unwrap_or(app.i18n.t("unnamed"));
+            let pub_key = key.public_key.as_deref().unwrap_or(app.i18n.t("na"));
             let pub_key_short = if pub_key.len() > 20 {
                 format!("{}...", &pub_key[..20])
             } else {
@@ -1306,9 +1335,9 @@ fn render_confirm_key_deletion_modal(f: &mut Frame, app: &App) {
         app.age_keys[app.key_manager_selected]
             .comment
             .as_deref()
-            .unwrap_or("Unnamed")
+            .unwrap_or(app.i18n.t("unnamed"))
     } else {
-        "Unknown"
+        app.i18n.t("unknown")
     };
 
     let text = vec![
@@ -1347,11 +1376,7 @@ fn render_confirm_key_deletion_modal(f: &mut Frame, app: &App) {
                     .fg(Color::Rgb(102, 187, 106))
                     .add_modifier(Modifier::BOLD),
             ),
-            Span::raw(if app.i18n.t("cmd_cancel").contains("Cancelar") {
-                "Cancelar"
-            } else {
-                "Cancel"
-            }),
+            Span::raw(app.i18n.t("cancel")),
         ]),
     ];
 
@@ -1447,7 +1472,7 @@ fn render_creating_folder_modal(f: &mut Frame, app: &App) {
     .block(
         Block::default()
             .borders(Borders::ALL)
-            .title(app.i18n.t("new_folder_title"))
+            .title(app.i18n.t("new_folder_title_help"))
             .title_style(
                 Style::default()
                     .fg(Color::Rgb(
@@ -1485,7 +1510,7 @@ fn render_renaming_file_modal(f: &mut Frame, app: &App) {
     .block(
         Block::default()
             .borders(Borders::ALL)
-            .title(app.i18n.t("rename_title"))
+            .title(app.i18n.t("rename_title_help"))
             .title_style(
                 Style::default()
                     .fg(Color::Rgb(
@@ -1554,11 +1579,7 @@ fn render_confirm_file_deletion_modal(f: &mut Frame, app: &App) {
                     .fg(Color::Rgb(102, 187, 106))
                     .add_modifier(Modifier::BOLD),
             ),
-            Span::raw(if app.i18n.t("cmd_cancel").contains("Cancelar") {
-                "Cancelar"
-            } else {
-                "Cancel"
-            }),
+            Span::raw(app.i18n.t("cancel")),
         ]),
     ];
 
@@ -1614,7 +1635,7 @@ fn render_creating_secret_file_modal(f: &mut Frame, app: &App) {
 
     let block = Block::default()
         .borders(Borders::ALL)
-        .title("🔐 Crear archivo encriptado con SOPS")
+        .title(app.i18n.t("create_encrypted_file_title_help"))
         .title_style(
             Style::default()
                 .fg(Color::Rgb(102, 187, 106))
@@ -1625,7 +1646,7 @@ fn render_creating_secret_file_modal(f: &mut Frame, app: &App) {
 
     f.render_widget(block, area);
 
-    let label = Paragraph::new(format!("Nombre del archivo (Enter para secrets.{})", ext))
+    let label = Paragraph::new(app.i18n.t("file_name_prompt").replace("{}", ext))
         .style(Style::default().fg(Color::Rgb(189, 189, 189)));
     f.render_widget(label, chunks[0]);
 
@@ -1648,10 +1669,10 @@ fn render_selecting_file_format_modal(f: &mut Frame, app: &App) {
     f.render_widget(Clear, area);
 
     let formats = [
-        (app.i18n.t("format_env"), "Environment variables (.env)"),
-        (app.i18n.t("format_json"), "JSON configuration (.json)"),
-        (app.i18n.t("format_yaml"), "YAML configuration (.yaml/.yml)"),
-        (app.i18n.t("format_ini"), "INI configuration (.ini)"),
+        (app.i18n.t("format_env"), app.i18n.t("environment_variables")),
+        (app.i18n.t("format_json"), app.i18n.t("json_config")),
+        (app.i18n.t("format_yaml"), app.i18n.t("yaml_config")),
+        (app.i18n.t("format_ini"), app.i18n.t("ini_config")),
     ];
 
     let items: Vec<ListItem> = formats
@@ -1692,7 +1713,7 @@ fn render_selecting_file_format_modal(f: &mut Frame, app: &App) {
         .block(
             Block::default()
                 .borders(Borders::ALL)
-                .title("📄 Seleccionar formato de archivo para SOPS")
+                .title(app.i18n.t("select_file_format_title_help"))
                 .title_style(
                     Style::default()
                         .fg(Color::Rgb(102, 187, 106))
@@ -1716,7 +1737,7 @@ fn render_selecting_sops_keys_modal(f: &mut Frame, app: &App) {
         .map(|(i, key)| {
             let checked = app.selected_sops_keys.get(i).copied().unwrap_or(false);
             let radio = if checked { "(•) " } else { "( ) " };
-            let name = key.comment.as_deref().unwrap_or("Unnamed");
+            let name = key.comment.as_deref().unwrap_or(app.i18n.t("unnamed"));
             let pub_key = key.public_key.as_ref().map(|k| &k[..16]).unwrap_or("???");
 
             let style = if Some(i) == app.key_list_state.selected() {
