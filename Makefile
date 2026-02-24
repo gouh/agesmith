@@ -72,3 +72,12 @@ dev: ## Run application in development mode (unoptimized, faster compilation)
 	cargo run
 
 release: build-all ## Build release binaries for all platforms and display info
+
+release-patch: ## Create a patch release (0.0.X) - bump, build, tag, and push
+	@./scripts/release.sh patch
+
+release-minor: ## Create a minor release (0.X.0) - bump, build, tag, and push
+	@./scripts/release.sh minor
+
+release-major: ## Create a major release (X.0.0) - bump, build, tag, and push
+	@./scripts/release.sh major

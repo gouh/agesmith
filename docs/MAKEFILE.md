@@ -91,7 +91,7 @@ AgeSmith follows [Semantic Versioning](https://semver.org/):
 - **MINOR**: New features (backward compatible)
 - **PATCH**: Bug fixes
 
-#### Bump Patch Version
+#### Manual Version Bump
 
 ```bash
 make bump-patch
@@ -99,21 +99,35 @@ make bump-patch
 
 Increments the patch version (e.g., 0.1.0 → 0.1.1).
 
-#### Bump Minor Version
-
 ```bash
 make bump-minor
 ```
 
 Increments the minor version (e.g., 0.1.0 → 0.2.0).
 
-#### Bump Major Version
-
 ```bash
 make bump-major
 ```
 
 Increments the major version (e.g., 0.1.0 → 1.0.0).
+
+#### Complete Release Process
+
+For a complete release (bump + build + tag + push):
+
+```bash
+make release-patch   # For bug fixes (0.0.X)
+make release-minor   # For new features (0.X.0)
+make release-major   # For breaking changes (X.0.0)
+```
+
+This will:
+1. Bump the version in `Cargo.toml`
+2. Build binaries for all platforms
+3. Generate checksums
+4. Commit the version bump
+5. Create and push a git tag
+6. Display instructions for creating the GitHub release
 
 ### Installation
 
@@ -158,7 +172,10 @@ make dev              # Test locally
 ### Release Workflow
 
 ```bash
-# Prepare release
+# Complete release (recommended)
+make release-patch   # For bug fixes
+
+# Or step by step
 make test             # Ensure tests pass
 make bump-minor       # Bump version
 make build-all        # Build for all platforms
