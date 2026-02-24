@@ -1,6 +1,6 @@
 [package]
 name = "agesmith"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 description = "Forging secure secrets with age"
 authors = ["Your Name <your.email@example.com>"]
