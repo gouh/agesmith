@@ -49,7 +49,10 @@ echo -e "${BLUE}Step 2: Building binaries for all platforms...${NC}"
 # Commit version bump
 echo ""
 echo -e "${BLUE}Step 3: Committing version bump...${NC}"
-git add Cargo.toml Cargo.lock
+git add Cargo.toml
+if [ -f Cargo.lock ]; then
+    git add -f Cargo.lock 2>/dev/null || true
+fi
 git commit -m "chore: Bump version to $NEW_VERSION"
 echo -e "${GREEN}✓${NC} Version bump committed"
 
