@@ -1,0 +1,14 @@
+# AgeSmith Configuration File
+# Location: ~/.config/agesmith/config.toml
+
+# UI Theme: "dark" or "light"
+theme = "dark"
+
+# Auto-lock after N minutes of inactivity (0 = disabled)
+auto_lock_minutes = 15
+
+# Message timeout in seconds (how long success/error messages stay visible)
+message_timeout_seconds = 3
+
+# Language: "en" for English, "es" for Spanish
+language = "en"
