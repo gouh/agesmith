@@ -143,9 +143,12 @@ download_binary() {
     chmod +x "$binary_path"
     mv "$binary_path" "$INSTALL_DIR/$BINARY_NAME"
     
-    rm -rf "$tmp_dir"
-    
     echo -e "${GREEN}✓${NC} Installed successfully"
+    
+    # Save expected checksum before cleanup
+    EXPECTED_CHECKSUM=$(grep "${BINARY_NAME}-${VERSION#v}-$TARGET" "$checksum_path" 2>/dev/null | awk '{print $1}')
+    
+    rm -rf "$tmp_dir"
 }
 
 # Check if install dir is in PATH
@@ -168,12 +171,17 @@ show_verification() {
     echo -e "${GREEN}Installation complete!${NC}"
     echo -e "${BLUE}========================================${NC}"
     echo ""
-    echo "Run: ${YELLOW}$BINARY_NAME --version${NC}"
+    echo -e "Run: ${YELLOW}agesmith${NC}"
     echo ""
     echo "To verify the installation checksum:"
     echo -e "  ${BLUE}shasum -a 256 $INSTALL_DIR/$BINARY_NAME${NC}"
     echo ""
-    echo "Compare with checksums at:"
+    if [ -n "$EXPECTED_CHECKSUM" ]; then
+        echo "Expected checksum:"
+        echo -e "  ${GREEN}$EXPECTED_CHECKSUM${NC}"
+        echo ""
+    fi
+    echo "Full checksums available at:"
     echo -e "  ${BLUE}https://github.com/$REPO/releases/download/$VERSION/checksums.txt${NC}"
     echo ""
 }
