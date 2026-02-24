@@ -13,17 +13,20 @@ fn create_age_key(keys_path: &PathBuf) -> Result<()> {
     if let Some(parent) = keys_path.parent() {
         fs::create_dir_all(parent)?;
     }
-    
+
     let output = Command::new("age-keygen")
         .arg("-o")
         .arg(keys_path)
         .output()
         .context("No se pudo ejecutar age-keygen. ¿Está instalado?")?;
-    
+
     if !output.status.success() {
-        anyhow::bail!("age-keygen falló: {}", String::from_utf8_lossy(&output.stderr));
+        anyhow::bail!(
+            "age-keygen falló: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
     }
-    
+
     Ok(())
 }
 
@@ -69,7 +72,7 @@ pub fn load_age_keys() -> Result<Vec<AgeKey>> {
 pub fn get_sops_recipients(file_path: &PathBuf) -> Result<Vec<String>> {
     let content = fs::read_to_string(file_path)?;
     let json: Value = serde_json::from_str(&content)?;
-    
+
     let mut recipients = Vec::new();
     if let Some(sops) = json.get("sops") {
         if let Some(age_array) = sops.get("age").and_then(|v| v.as_array()) {
@@ -108,24 +111,23 @@ pub fn age_private_to_public(private_key: &str) -> Result<String> {
 pub fn run_sops_command(file_path: &PathBuf, age_key: Option<&str>) -> Result<String> {
     let mut cmd = Command::new("sops");
     cmd.arg("-d");
-    
-    let ext = file_path.extension().and_then(|s| s.to_str());
-    
+
+    let _ext = file_path.extension().and_then(|s| s.to_str());
+
     // Para todos los archivos, salida en JSON para parsear
     // SOPS detecta automáticamente el formato de entrada
     cmd.arg("--output-type").arg("json");
-    
+
     cmd.arg(file_path);
 
     if let Some(key) = age_key {
         cmd.env("SOPS_AGE_KEY", key);
     } else {
         // Asegurar que SOPS encuentre las llaves age
-        let age_key_file = std::env::var("SOPS_AGE_KEY_FILE")
-            .unwrap_or_else(|_| {
-                let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
-                format!("{}/.config/sops/age/keys.txt", home)
-            });
+        let age_key_file = std::env::var("SOPS_AGE_KEY_FILE").unwrap_or_else(|_| {
+            let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
+            format!("{}/.config/sops/age/keys.txt", home)
+        });
         cmd.env("SOPS_AGE_KEY_FILE", age_key_file);
     }
 
@@ -136,6 +138,28 @@ pub fn run_sops_command(file_path: &PathBuf, age_key: Option<&str>) -> Result<St
     } else {
         let stderr = String::from_utf8_lossy(&output.stderr);
         anyhow::bail!("SOPS error: {}", stderr)
+    }
+}
+
+/// Desescapa un valor entrecomillado de .env/.ini
+fn unquote_env_value(value: &str) -> String {
+    let trimmed = value.trim();
+    
+    // Si está entrecomillado, remover comillas y desescapar
+    if (trimmed.starts_with('"') && trimmed.ends_with('"') && trimmed.len() >= 2)
+        || (trimmed.starts_with('\'') && trimmed.ends_with('\'') && trimmed.len() >= 2)
+    {
+        let unquoted = &trimmed[1..trimmed.len() - 1];
+        // Desescapar secuencias comunes
+        unquoted
+            .replace(r"\n", "\n")
+            .replace(r"\r", "\r")
+            .replace(r"\t", "\t")
+            .replace(r#"\""#, "\"")
+            .replace(r"\'", "'")
+            .replace(r"\\", "\\")
+    } else {
+        trimmed.to_string()
     }
 }
 
@@ -158,12 +182,14 @@ pub fn flatten_json(prefix: &str, value: &Value, result: &mut Vec<(String, Strin
             }
         }
         _ => {
-            let str_value = value.to_string().trim_matches('"').to_string();
-            // Desescapar comillas y barras invertidas
-            let unescaped = str_value
-                .replace("\\\"", "\"")
-                .replace("\\'", "'")
-                .replace("\\\\", "\\");
+            // Obtener el valor como string directamente (sin serialización JSON)
+            let str_value = if let Some(s) = value.as_str() {
+                s.to_string()
+            } else {
+                value.to_string().trim_matches('"').to_string()
+            };
+            // Desescapar valores entrecomillados de .env/.ini
+            let unescaped = unquote_env_value(&str_value);
             result.push((prefix.to_string(), unescaped));
         }
     }
@@ -171,14 +197,14 @@ pub fn flatten_json(prefix: &str, value: &Value, result: &mut Vec<(String, Strin
 
 pub fn get_encrypted_keys(file_path: &PathBuf) -> Result<Vec<String>> {
     let content = fs::read_to_string(file_path)?;
-    
+
     // Detectar formato del archivo
     let file_name = file_path.file_name().and_then(|s| s.to_str()).unwrap_or("");
     let ext = file_path.extension().and_then(|s| s.to_str());
-    
+
     let is_dotenv = file_name == ".env" || ext == Some("env");
     let is_ini = file_name == ".ini" || ext == Some("ini");
-    
+
     if is_dotenv || is_ini {
         // Para dotenv/ini, buscar líneas con ENC[
         let encrypted_keys: Vec<String> = content
@@ -191,15 +217,15 @@ pub fn get_encrypted_keys(file_path: &PathBuf) -> Result<Vec<String>> {
                 if let Some((key, value)) = line.split_once('=') {
                     let key = key.trim();
                     let value = value.trim();
-                    
+
                     // Para INI, SOPS usa formato "SECTION.SUBSECTION.key"
                     // Extraer solo la última parte después del último punto
                     let clean_key = if is_ini && key.contains('.') {
-                        key.split('.').last().unwrap_or(key)
+                        key.split('.').next_back().unwrap_or(key)
                     } else {
                         key
                     };
-                    
+
                     if value.contains("ENC[") {
                         return Some(clean_key.to_string());
                     }
@@ -209,7 +235,7 @@ pub fn get_encrypted_keys(file_path: &PathBuf) -> Result<Vec<String>> {
             .collect();
         return Ok(encrypted_keys);
     }
-    
+
     // Para JSON/YAML, parsear como JSON
     let json: Value = serde_json::from_str(&content)?;
 
@@ -251,28 +277,32 @@ pub fn get_encrypted_keys(file_path: &PathBuf) -> Result<Vec<String>> {
     Ok(encrypted_keys)
 }
 
-pub fn decrypt_and_parse(file_path: &PathBuf, age_key: Option<&str>) -> Result<Vec<(String, String)>> {
+pub fn decrypt_and_parse(
+    file_path: &PathBuf,
+    age_key: Option<&str>,
+) -> Result<Vec<(String, String)>> {
     let decrypted = run_sops_command(file_path, age_key)?;
-    
+
     // SOPS siempre devuelve JSON, parseamos
     let json: Value = serde_json::from_str(&decrypted)?;
     let mut secrets = Vec::new();
     flatten_json("", &json, &mut secrets);
     secrets.retain(|(k, _)| !k.starts_with("sops."));
-    
+
     // Limpiar prefijos DEFAULT. de archivos INI
     let ext = file_path.extension().and_then(|s| s.to_str());
     let file_name = file_path.file_name().and_then(|s| s.to_str()).unwrap_or("");
     let is_ini = file_name == ".ini" || ext == Some("ini");
-    
+
     if is_ini {
-        secrets = secrets.into_iter()
+        secrets = secrets
+            .into_iter()
             .map(|(k, v)| {
                 let clean_key = k.strip_prefix("DEFAULT.").unwrap_or(&k).to_string();
                 (clean_key, v)
             })
             .collect();
     }
-    
+
     Ok(secrets)
 }

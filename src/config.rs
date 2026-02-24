@@ -11,6 +11,7 @@ pub enum Language {
 #[derive(Debug, Clone, Copy)]
 pub struct Theme {
     pub primary: (u8, u8, u8),
+    #[allow(dead_code)]
     pub secondary: (u8, u8, u8),
     pub success: (u8, u8, u8),
     pub error: (u8, u8, u8),

@@ -1,157 +1,340 @@
 # AgeSmith
 
-**Forging secure secrets with age**
+<div align="center">
 
-A powerful TUI (Terminal User Interface) for managing SOPS-encrypted secrets with age encryption.
+**🔐 Forging Secure Secrets with Age Encryption**
 
-## Features
+A powerful Terminal User Interface (TUI) for managing SOPS-encrypted secrets
 
-- Automatically reads age identities from `~/.config/sops/age/keys.txt`
-- **Auto-key detection**: Automatically selects the correct key based on file recipients
-- Decrypts SOPS files using the system binary
-- Displays secrets in table format with masked values by default
-- **Only masks encrypted values**: Unencrypted values are always shown
-- **Clipboard support**: Copy decrypted values or keys with `c` and `C`
-- **In-place editing**: Edit, add, and delete secrets directly in the TUI
-- **Smart saving**: Re-encrypts with SOPS maintaining original recipients
-- **Secret generator**: Generate secure passwords, hex/base64 tokens, and UUIDs
-- **Advanced search**: Normal or regex search to filter secrets
-- **Zoom modal**: View full values with scroll and pretty print JSON
-- **Persistent configuration**: Customize timeouts and preferences in `~/.config/agesmith/config.toml`
-- **Internationalization**: Support for Spanish and English (configurable)
-- Allows manual selection of a specific age key by injecting `SOPS_AGE_KEY`
-- Flattens nested JSON structures for simple visualization
-- **Key search**: Filter keys by name or public key
-- **Secret search**: Filter secrets by key or value
-- **Recipient validation**: Indicates which keys match the encrypted file
-- **Detailed information**: Shows public keys and file recipients
-- **Help panel**: Press `?` to see all available commands
-- **Modern theme**: Vibrant colors and intuitive UI
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Rust](https://img.shields.io/badge/rust-1.70%2B-orange.svg)](https://www.rust-lang.org/)
+[![Tests](https://img.shields.io/badge/tests-80%2B%20passing-brightgreen.svg)](./docs/TESTING.md)
 
-## Requirements
+[Features](#-features) •
+[Installation](#-installation) •
+[Usage](#-usage) •
+[Documentation](#-documentation) •
+[Contributing](#-contributing)
 
-- Rust (1.70+)
-- `sops` installed on the system
-- Age keys in `~/.config/sops/age/keys.txt`
+</div>
 
-## Installation
+---
+
+## 🎯 What is AgeSmith?
+
+AgeSmith is a modern TUI application that makes managing encrypted secrets simple and secure. It provides an intuitive interface for working with SOPS-encrypted files using age encryption, supporting multiple file formats (JSON, YAML, ENV, INI) with advanced features like search, filtering, and in-place editing.
+
+### Why AgeSmith?
+
+- **🔒 Secure**: Built on SOPS and age encryption
+- **⚡ Fast**: Instant file loading and searching
+- **🎨 Beautiful**: Modern UI with intuitive controls
+- **🌍 Universal**: Supports JSON, YAML, ENV, and INI formats
+- **🔍 Smart**: Auto-detects keys and handles special characters
+- **🌐 International**: English and Spanish support
+
+## ✨ Features
+
+### Core Capabilities
+
+- **🔑 Automatic Key Management**
+  - Reads age identities from `~/.config/sops/age/keys.txt`
+  - Auto-detects correct key based on file recipients
+  - Manual key selection when needed
+  - Key validation and recipient matching
+
+- **📁 Multi-Format Support**
+  - JSON with nested structures
+  - YAML configurations
+  - ENV files (.env)
+  - INI configuration files
+  - Smart format detection
+  - Automatic value quoting for special characters
+
+- **✏️ In-Place Editing**
+  - Edit secret values directly
+  - Add new secrets with wizard
+  - Delete with confirmation
+  - Bulk operations on marked files
+  - Undo-safe with automatic backups
+
+- **🔍 Advanced Search**
+  - Search by key or value
+  - Regex pattern matching
+  - Real-time filtering
+  - Case-insensitive search
+  - Search across nested structures
+
+- **🎨 Modern Interface**
+  - Dual-panel layout (explorer + secrets)
+  - Visual indicators (⭐ favorites, ✓ marked, 📁 directories)
+  - Masked values by default (toggle with `v`)
+  - Zoom modal for full value viewing
+  - Pretty-print JSON
+  - Contextual help panel (`?`)
+
+- **🛠️ Utilities**
+  - Secret generator (passwords, hex, base64, UUID)
+  - Clipboard support (copy keys/values)
+  - Favorites management
+  - File creation wizard
+  - Batch operations
+
+- **⚙️ Configuration**
+  - Persistent settings in `~/.config/agesmith/config.toml`
+  - Theme customization
+  - Auto-lock timeout
+  - Clipboard clear timeout
+  - Language selection (EN/ES)
+
+## 📋 Requirements
+
+- **Rust** 1.70 or higher
+- **SOPS** installed and in PATH
+- **Age keys** in `~/.config/sops/age/keys.txt`
+
+### Installing Dependencies
 
 ```bash
-cargo build --release
+# macOS
+brew install sops age
+
+# Linux (Debian/Ubuntu)
+sudo apt install age
+# Install SOPS from: https://github.com/mozilla/sops/releases
+
+# Generate age key
+age-keygen -o ~/.config/sops/age/keys.txt
 ```
 
-## Usage
+## 🚀 Installation
+
+### From Source
+
+```bash
+# Clone the repository
+git clone https://github.com/yourusername/agesmith.git
+cd agesmith
+
+# Build release version
+cargo build --release
+
+# Binary will be at: ./target/release/agesmith
+```
+
+### Install Globally
+
+```bash
+cargo install --path .
+```
+
+## 💻 Usage
+
+### Quick Start
 
 ```bash
 # Start in current directory
-cargo run
+agesmith
 
-# Start in a specific directory
-cargo run -- /path/to/secrets
+# Start in specific directory
+agesmith /path/to/secrets
 
 # With compiled binary
 ./target/release/agesmith
 ./target/release/agesmith /path/to/secrets
 ```
 
-## Controls
+### Basic Workflow
 
-### In Explorer:
+1. **Navigate** - Use `↑/↓` to browse files
+2. **Open** - Press `Enter` to decrypt and view secrets
+3. **Edit** - Press `e` to modify a value
+4. **Save** - Press `s` to encrypt and save changes
+5. **Search** - Press `/` to filter secrets
 
-- **↑/↓**: Navigate files and directories
-- **Enter**: Open directory or load encrypted file
-- **m**: Mark/unmark file for batch operations
-- **Tab**: Switch to secrets panel
-- **k**: Open age key selector
-- **q**: Quit
+## ⌨️ Keyboard Shortcuts
 
-**Visual indicators**:
-- ⭐ File in favorites
-- ✓ Marked file
-- 📁 Directory
-- 📄 File
+### File Explorer
 
-### In Secrets Panel:
+| Key | Action |
+|-----|--------|
+| `↑/↓` | Navigate files and directories |
+| `Enter` | Open directory or decrypt file |
+| `m` | Mark/unmark file for batch operations |
+| `Tab` | Switch to secrets panel |
+| `k` | Open age key selector |
+| `i` | Initialize SOPS in directory |
+| `+` | Create new secret file |
+| `r` | Rename file |
+| `D` | Delete file |
+| `q` | Quit application |
 
-- **↑/↓**: Navigate secrets
-- **v**: Toggle show/hide values (encrypted values only)
-- **z**: Open zoom modal to view full value
-- **c**: Copy selected secret value to clipboard
-- **C**: Copy selected secret key to clipboard
-- **f**: Add/remove current file from favorites
-- **/**: Activate secret search
-- **e**: Edit selected secret value
-- **n**: Add new secret (key + value)
-- **d**: Delete selected secret (with confirmation)
-- **s**: Save changes to file (re-encrypts with SOPS)
-- **g**: Open secret generator (passwords, tokens, UUIDs)
-- **k**: Open age key selector
-- **?**: Show help panel with all commands
-- **Tab**: Return to explorer
-- **q**: Quit
+### Secrets Panel
 
-### In Secret Search Mode:
+| Key | Action |
+|-----|--------|
+| `↑/↓` | Navigate secrets |
+| `v` | Toggle show/hide values |
+| `z` | Open zoom modal (full value view) |
+| `c` | Copy secret value to clipboard |
+| `C` | Copy secret key to clipboard |
+| `f` | Add/remove file from favorites |
+| `/` | Search secrets |
+| `e` | Edit selected secret |
+| `n` | Add new secret |
+| `d` | Delete secret (with confirmation) |
+| `s` | Save changes (re-encrypt) |
+| `g` | Open secret generator |
+| `k` | Open age key selector |
+| `?` | Show help panel |
+| `Tab` | Return to explorer |
+| `q` | Quit application |
 
-- **Type**: Filter secrets by key or value
-- **r**: Toggle regex mode (🔍→🔎)
-- **Enter**: Apply filter
-- **Esc**: Cancel search
+### Search Mode
 
-### In Zoom Modal:
+| Key | Action |
+|-----|--------|
+| `Type` | Filter secrets by key or value |
+| `r` | Toggle regex mode (🔍→🔎) |
+| `Enter` | Apply filter |
+| `Esc` | Cancel search |
 
-- **↑/↓**: Scroll through content
-- **j**: Toggle pretty print JSON
-- **Esc/z**: Close modal
+### Zoom Modal
 
-### In Key Selector:
+| Key | Action |
+|-----|--------|
+| `↑/↓` | Scroll through content |
+| `j` | Toggle pretty-print JSON |
+| `Esc/z` | Close modal |
 
-- **↑/↓**: Navigate available keys
-- **/**: Activate key search
-- **Enter**: Apply selected key and retry decryption
-- **Esc**: Cancel
+## ⚙️ Configuration
 
-### In Search Mode:
-
-- **Type**: Filter keys by name or public key
-- **Enter**: Apply filter and return to selector
-- **Esc**: Cancel search
-
-## Configuration
-
-Create the file `~/.config/agesmith/config.toml`:
+Create `~/.config/agesmith/config.toml`:
 
 ```toml
+# Theme: "dark" or "light"
 theme = "dark"
+
+# Auto-lock after N minutes of inactivity
 auto_lock_minutes = 15
-clipboard_clear_seconds = 3
-language = "en"  # "en" for English, "es" for Spanish
+
+# Clear clipboard after N seconds
+clipboard_clear_seconds = 30
+
+# Language: "en" (English) or "es" (Spanish)
+language = "en"
 ```
 
-## Code Structure
+### Theme Colors
 
-- **App State**: Manages secrets, table state, age keys, and input mode
-- **SOPS Backend**: Uses `std::process::Command` to invoke `sops -d`
-- **UI**: Main table with command footer and key selection modal
-- **Identities**: Parser for `keys.txt` that extracts keys and comments
+Customize colors in your config:
 
-## Architecture
+```toml
+[theme]
+primary = [100, 200, 255]
+success = [100, 255, 100]
+error = [255, 100, 100]
+warning = [255, 200, 100]
+bg = [0, 0, 0]
+fg = [255, 255, 255]
+```
 
-The project is organized into 8 specialized modules:
+## 📚 Documentation
 
-- **main.rs** (94 lines) - Entry point and event loop
-- **config.rs** (90 lines) - Configuration and favorites management
-- **sops.rs** (175 lines) - SOPS/age encryption operations
-- **state.rs** (564 lines) - Application state and business logic
-- **ui.rs** (571 lines) - Visual component rendering
-- **events.rs** (429 lines) - Event handling
-- **generator.rs** (57 lines) - Secret generation
-- **help.rs** (33 lines) - Help panel
-- **i18n.rs** (160 lines) - Internationalization
+- **[Testing Guide](docs/TESTING.md)** - Test suite documentation
+- **[Writing Tests](docs/WRITING_TESTS.md)** - How to write new tests
+- **[Roadmap](docs/ROADMAP.md)** - Project goals and planned features
+- **[Architecture](docs/ARCHITECTURE.md)** - Code structure and design
 
-## License
+## 🏗️ Architecture
 
-MIT
+```
+src/
+├── main.rs          # Entry point and event loop
+├── state.rs         # Application state and business logic
+├── ui.rs            # Visual components and rendering
+├── events.rs        # Keyboard event handling
+├── sops.rs          # SOPS/age encryption operations
+├── config.rs        # Configuration management
+├── generator.rs     # Secret generation utilities
+├── i18n.rs          # Internationalization
+└── help.rs          # Help system
+```
 
-## Author
+### Key Components
 
-Built with ❤️ using Rust, Ratatui, and age encryption
+- **State Management**: Centralized app state with immutable updates
+- **Event Loop**: Async event handling with Tokio
+- **UI Rendering**: Ratatui-based terminal interface
+- **SOPS Integration**: Command-line interface to SOPS binary
+- **Format Support**: Pluggable format handlers (JSON, YAML, ENV, INI)
+
+## 🧪 Testing
+
+AgeSmith has a comprehensive test suite with **80+ tests**:
+
+```bash
+# Run all tests
+cargo test
+
+# Run with output
+cargo test -- --nocapture
+
+# Run specific test category
+cargo test --test config_test
+cargo test --test crud_operations_test
+```
+
+See [Testing Documentation](docs/TESTING.md) for details.
+
+## 🤝 Contributing
+
+Contributions are welcome! Here's how you can help:
+
+1. **Report Bugs** - Open an issue with details
+2. **Suggest Features** - Share your ideas
+3. **Submit PRs** - Fix bugs or add features
+4. **Improve Docs** - Help make documentation better
+5. **Write Tests** - Increase test coverage
+
+### Development Setup
+
+```bash
+# Clone and build
+git clone https://github.com/yourusername/agesmith.git
+cd agesmith
+cargo build
+
+# Run tests
+cargo test
+
+# Check code quality
+cargo clippy
+cargo fmt --check
+```
+
+## 📝 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🙏 Acknowledgments
+
+- **[SOPS](https://github.com/mozilla/sops)** - Secrets OPerationS
+- **[Age](https://age-encryption.org/)** - Simple, modern encryption
+- **[Ratatui](https://ratatui.rs/)** - Terminal UI framework
+- **[Crossterm](https://github.com/crossterm-rs/crossterm)** - Terminal manipulation
+
+## 📧 Contact
+
+- **Issues**: [GitHub Issues](https://github.com/yourusername/agesmith/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/yourusername/agesmith/discussions)
+
+---
+
+<div align="center">
+
+**Built with ❤️ using Rust, Ratatui, and Age Encryption**
+
+[⬆ Back to Top](#agesmith)
+
+</div>

@@ -69,7 +69,8 @@ fn handle_explorer_keys(app: &mut App, key: KeyEvent) -> Result<bool> {
                 if let Some(path) = app.files.get(idx) {
                     if path.to_str() != Some("..") {
                         app.input_mode = InputMode::RenamingFile;
-                        app.rename_buffer = path.file_name()
+                        app.rename_buffer = path
+                            .file_name()
                             .and_then(|n| n.to_str())
                             .unwrap_or("")
                             .to_string();
@@ -176,7 +177,8 @@ fn handle_selecting_key_keys(app: &mut App, key: KeyEvent) -> Result<bool> {
                                 app.input_mode = InputMode::Secrets;
                             }
                             Err(_) => {
-                                app.error_message = Some(app.i18n.t("error_decrypt_key").to_string());
+                                app.error_message =
+                                    Some(app.i18n.t("error_decrypt_key").to_string());
                                 app.input_mode = InputMode::Explorer;
                             }
                         }
@@ -221,7 +223,10 @@ fn handle_searching_secrets_keys(app: &mut App, key: KeyEvent) -> Result<bool> {
         }
         KeyCode::Char('r') => {
             app.use_regex = !app.use_regex;
-            if app.use_regex && !app.secret_search_query.is_empty() && Regex::new(&app.secret_search_query).is_err() {
+            if app.use_regex
+                && !app.secret_search_query.is_empty()
+                && Regex::new(&app.secret_search_query).is_err()
+            {
                 app.set_temp_message(app.i18n.t("error_regex").to_string());
             }
         }
@@ -290,7 +295,7 @@ fn handle_editing_keys(app: &mut App, key: KeyEvent) -> Result<bool> {
                 let result = crate::generator::generate_password(16, true, true);
                 app.editing_value_buffer = result.clone();
                 app.cursor_position = app.editing_value_buffer.len();
-                
+
                 if let Some(clipboard) = &mut app.clipboard {
                     let _ = clipboard.set_text(result.clone());
                 }
@@ -346,7 +351,7 @@ fn handle_adding_secret_keys(app: &mut App, key: KeyEvent) -> Result<bool> {
                 let result = crate::generator::generate_password(16, true, true);
                 app.editing_value_buffer = result.clone();
                 app.cursor_position = app.editing_value_buffer.len();
-                
+
                 if let Some(clipboard) = &mut app.clipboard {
                     let _ = clipboard.set_text(result.clone());
                 }
@@ -534,31 +539,30 @@ fn handle_settings_keys(app: &mut App, key: KeyEvent) -> Result<bool> {
                 app.settings_selected += 1;
             }
         }
-        KeyCode::Left | KeyCode::Right | KeyCode::Enter => {
-            match app.settings_selected {
-                0 => app.toggle_theme(),
-                1 => app.toggle_language(),
-                2 => {
-                    if key.code == KeyCode::Left && app.config.auto_lock_minutes > 0 {
-                        app.config.auto_lock_minutes = app.config.auto_lock_minutes.saturating_sub(1);
-                        let _ = app.save_config();
-                    } else if key.code == KeyCode::Right && app.config.auto_lock_minutes < 120 {
-                        app.config.auto_lock_minutes += 1;
-                        let _ = app.save_config();
-                    }
+        KeyCode::Left | KeyCode::Right | KeyCode::Enter => match app.settings_selected {
+            0 => app.toggle_theme(),
+            1 => app.toggle_language(),
+            2 => {
+                if key.code == KeyCode::Left && app.config.auto_lock_minutes > 0 {
+                    app.config.auto_lock_minutes = app.config.auto_lock_minutes.saturating_sub(1);
+                    let _ = app.save_config();
+                } else if key.code == KeyCode::Right && app.config.auto_lock_minutes < 120 {
+                    app.config.auto_lock_minutes += 1;
+                    let _ = app.save_config();
                 }
-                3 => {
-                    if key.code == KeyCode::Left && app.config.message_timeout_seconds > 1 {
-                        app.config.message_timeout_seconds = app.config.message_timeout_seconds.saturating_sub(1);
-                        let _ = app.save_config();
-                    } else if key.code == KeyCode::Right && app.config.message_timeout_seconds < 30 {
-                        app.config.message_timeout_seconds += 1;
-                        let _ = app.save_config();
-                    }
-                }
-                _ => {}
             }
-        }
+            3 => {
+                if key.code == KeyCode::Left && app.config.message_timeout_seconds > 1 {
+                    app.config.message_timeout_seconds =
+                        app.config.message_timeout_seconds.saturating_sub(1);
+                    let _ = app.save_config();
+                } else if key.code == KeyCode::Right && app.config.message_timeout_seconds < 30 {
+                    app.config.message_timeout_seconds += 1;
+                    let _ = app.save_config();
+                }
+            }
+            _ => {}
+        },
         KeyCode::Char('s') => {
             if let Err(e) = app.save_config() {
                 app.set_temp_message(format!("{}: {}", app.i18n.t("error_save_config"), e));
@@ -764,7 +768,7 @@ fn handle_selecting_sops_keys_keys(app: &mut App, key: KeyEvent) -> Result<bool>
                 if let Some(checked) = app.selected_sops_keys.get_mut(selected) {
                     *checked = true;
                 }
-                
+
                 // Si es Enter, crear el config y el archivo
                 if key.code == KeyCode::Enter {
                     if let Err(e) = app.create_sops_config() {
@@ -783,7 +787,6 @@ fn handle_selecting_sops_keys_keys(app: &mut App, key: KeyEvent) -> Result<bool>
     }
     Ok(false)
 }
-
 
 fn handle_editing_sops_config_keys(app: &mut App, key: KeyEvent) -> Result<bool> {
     match key.code {

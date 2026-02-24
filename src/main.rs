@@ -1,9 +1,9 @@
 use anyhow::Result;
 use crossterm::{
+    cursor::{SetCursorStyle, Show},
     event::{self, Event, KeyEventKind},
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
-    cursor::{SetCursorStyle, Show},
 };
 use ratatui::{backend::CrosstermBackend, Terminal};
 use std::{env, io::stdout, path::PathBuf, time::Duration};
@@ -53,7 +53,12 @@ async fn main() -> Result<()> {
 
     enable_raw_mode()?;
     let mut stdout = stdout();
-    execute!(stdout, EnterAlternateScreen, Show, SetCursorStyle::BlinkingBar)?;
+    execute!(
+        stdout,
+        EnterAlternateScreen,
+        Show,
+        SetCursorStyle::BlinkingBar
+    )?;
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
 

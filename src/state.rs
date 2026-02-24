@@ -7,7 +7,9 @@ use arboard::Clipboard;
 use regex::Regex;
 use serde_json::Value;
 use std::{
-    fs, path::{Path, PathBuf}, process::Command,
+    fs,
+    path::{Path, PathBuf},
+    process::Command,
     time::{Duration, Instant},
 };
 
@@ -18,6 +20,7 @@ pub enum InputMode {
     SelectingKey,
     SearchingKey,
     SearchingSecrets,
+    #[allow(dead_code)]
     Generating,
     Editing,
     Confirming,
@@ -78,7 +81,9 @@ pub struct App {
     pub last_activity: Instant,
     pub theme: Theme,
     pub settings_selected: usize,
+    #[allow(dead_code)]
     pub is_loading: bool,
+    #[allow(dead_code)]
     pub loading_message: String,
     pub key_manager_selected: usize,
     pub new_key_comment: String,
@@ -92,7 +97,12 @@ pub struct App {
 }
 
 impl App {
-    pub fn new(start_dir: PathBuf, config: Config, age_keys: Vec<AgeKey>, favorites: Vec<PathBuf>) -> Result<Self> {
+    pub fn new(
+        start_dir: PathBuf,
+        config: Config,
+        age_keys: Vec<AgeKey>,
+        favorites: Vec<PathBuf>,
+    ) -> Result<Self> {
         let files = Self::list_files(&start_dir)?;
         let i18n = I18n::new(config.get_language());
         let theme = config.get_theme();
@@ -234,22 +244,26 @@ impl App {
 
     pub fn generate_and_copy(&mut self) {
         let result = match self.gen_selected_option {
-            0 => crate::generator::generate_password(self.gen_length, self.gen_use_special, self.gen_use_numbers),
+            0 => crate::generator::generate_password(
+                self.gen_length,
+                self.gen_use_special,
+                self.gen_use_numbers,
+            ),
             1 => crate::generator::generate_token(self.gen_token_format, self.gen_length),
             _ => return,
         };
-        
+
         // Poner el valor generado en el buffer de edición
         self.editing_value_buffer = result.clone();
         self.cursor_position = self.editing_value_buffer.len();
-        
+
         if let Some(clipboard) = &mut self.clipboard {
             if clipboard.set_text(result.clone()).is_ok() {
                 self.set_temp_message(format!("{}: {}", self.i18n.t("generated"), result));
                 self.clipboard_timestamp = Some(Instant::now());
             }
         }
-        
+
         // Volver al modo de edición/agregado
         if self.table_state.selected().is_some() {
             self.input_mode = InputMode::Editing;
@@ -265,7 +279,7 @@ impl App {
                 self.message_timestamp = None;
             }
         }
-        
+
         if let Some(timestamp) = self.clipboard_timestamp {
             if timestamp.elapsed() > Duration::from_secs(self.config.message_timeout_seconds) {
                 if let Some(clipboard) = &mut self.clipboard {
@@ -384,9 +398,9 @@ impl App {
 
     pub fn is_encrypted(&self, key: &str) -> bool {
         // Comparar directamente o por la última parte después del último punto (para INI)
-        self.encrypted_keys.iter().any(|k| {
-            k == key || key.ends_with(&format!(".{}", k))
-        })
+        self.encrypted_keys
+            .iter()
+            .any(|k| k == key || key.ends_with(&format!(".{}", k)))
     }
 
     pub fn open_value_viewer(&mut self) {
@@ -424,7 +438,7 @@ impl App {
 
     pub fn init_sops_config(&mut self) -> Result<()> {
         let sops_file = self.current_dir.join(".sops.yaml");
-        
+
         if sops_file.exists() {
             // Abrir con editor externo
             self.open_file_in_editor(&sops_file)?;
@@ -441,16 +455,16 @@ impl App {
         self.selected_format = 0;
         self.new_file_name_buffer.clear();
         self.input_mode = InputMode::SelectingFileFormat;
-        
+
         Ok(())
     }
 
     pub fn open_file_in_editor(&self, file_path: &PathBuf) -> Result<()> {
         use std::process::Command;
-        
+
         // Intentar editores en orden de preferencia
         let editors = ["nano", "vim", "vi"];
-        
+
         for editor in &editors {
             if Command::new("which")
                 .arg(editor)
@@ -458,20 +472,19 @@ impl App {
                 .map(|o| o.status.success())
                 .unwrap_or(false)
             {
-                Command::new(editor)
-                    .arg(file_path)
-                    .status()?;
+                Command::new(editor).arg(file_path).status()?;
                 return Ok(());
             }
         }
-        
+
         anyhow::bail!("No se encontró ningún editor (nano, vim, vi)")
     }
 
     pub fn create_sops_config(&mut self) -> Result<()> {
         let sops_file = self.current_dir.join(".sops.yaml");
-        
-        let public_keys: Vec<String> = self.age_keys
+
+        let public_keys: Vec<String> = self
+            .age_keys
             .iter()
             .enumerate()
             .filter(|(i, _)| self.selected_sops_keys.get(*i).copied().unwrap_or(false))
@@ -484,11 +497,11 @@ impl App {
         }
 
         let age_keys = public_keys.join(",\n        ");
-        
+
         // Obtener nombre del archivo
         let formats = ["env", "json", "yaml", "ini"];
         let ext = formats[self.selected_format];
-        
+
         let filename = if self.new_file_name_buffer.is_empty() {
             format!("secrets.{}", ext)
         } else if self.new_file_name_buffer.ends_with(&format!(".{}", ext)) {
@@ -508,7 +521,7 @@ impl App {
         fs::write(&sops_file, config_content)?;
         self.files = Self::list_files(&self.current_dir)?;
         self.set_temp_message(self.i18n.t("sops_initialized").to_string());
-        
+
         Ok(())
     }
 
@@ -523,7 +536,7 @@ impl App {
 
     pub fn generate_age_key(&mut self) -> Result<()> {
         use std::process::Command;
-        
+
         let output = Command::new("age-keygen")
             .output()
             .context("No se pudo ejecutar age-keygen. ¿Está instalado?")?;
@@ -533,7 +546,7 @@ impl App {
         }
 
         let key_content = String::from_utf8(output.stdout)?;
-        
+
         // Agregar comentario si se proporcionó, preservando el formato
         let final_content = if !self.new_key_comment.is_empty() {
             // Insertar comentario después de "# created:"
@@ -562,12 +575,12 @@ impl App {
 
         use std::fs::OpenOptions;
         use std::io::Write;
-        
+
         let mut file = OpenOptions::new()
             .create(true)
             .append(true)
             .open(&keys_path)?;
-        
+
         // Agregar separador si el archivo no está vacío
         let metadata = file.metadata()?;
         if metadata.len() > 0 {
@@ -579,7 +592,7 @@ impl App {
         self.age_keys = crate::sops::load_age_keys()?;
         self.new_key_comment.clear();
         self.set_temp_message(self.i18n.t("key_generated").to_string());
-        
+
         Ok(())
     }
 
@@ -599,30 +612,30 @@ impl App {
             .join(".config/sops/age/keys.txt");
 
         let original_content = fs::read_to_string(&keys_path)?;
-        
+
         // Dividir en bloques de llaves (separados por líneas vacías)
         let blocks: Vec<&str> = original_content.split("\n\n").collect();
-        
+
         // Filtrar el bloque que contiene la llave a eliminar
         let key_to_remove = &self.age_keys[idx].key;
         let filtered_blocks: Vec<&str> = blocks
             .into_iter()
             .filter(|block| !block.contains(key_to_remove))
             .collect();
-        
+
         // Reconstruir el archivo
         let new_content = filtered_blocks.join("\n\n").trim_end().to_string();
         fs::write(&keys_path, new_content)?;
 
         // Actualizar la lista en memoria
         self.age_keys.remove(idx);
-        
+
         if self.key_manager_selected >= self.age_keys.len() && self.key_manager_selected > 0 {
             self.key_manager_selected -= 1;
         }
 
         self.set_temp_message(self.i18n.t("key_deleted").to_string());
-        
+
         Ok(())
     }
 
@@ -633,11 +646,11 @@ impl App {
 
         let new_folder = self.current_dir.join(&self.folder_name_buffer);
         fs::create_dir_all(&new_folder)?;
-        
+
         self.files = Self::list_files(&self.current_dir)?;
         self.folder_name_buffer.clear();
         self.set_temp_message(self.i18n.t("folder_created").to_string());
-        
+
         Ok(())
     }
 
@@ -652,25 +665,26 @@ impl App {
                     return Ok(());
                 }
 
-                let new_path = path.parent()
+                let new_path = path
+                    .parent()
                     .unwrap_or(&self.current_dir)
                     .join(&self.rename_buffer);
-                
+
                 fs::rename(path, &new_path)?;
-                
+
                 self.files = Self::list_files(&self.current_dir)?;
                 self.rename_buffer.clear();
                 self.set_temp_message(self.i18n.t("file_renamed").to_string());
             }
         }
-        
+
         Ok(())
     }
 
     pub fn create_encrypted_file(&mut self) -> Result<()> {
         let formats = ["env", "json", "yaml", "ini"];
         let ext = formats[self.selected_format];
-        
+
         // Si el buffer está vacío, usar "secrets" como nombre por defecto
         let filename = if self.new_file_name_buffer.is_empty() {
             format!("secrets.{}", ext)
@@ -682,9 +696,9 @@ impl App {
         } else {
             format!("{}.{}", self.new_file_name_buffer, ext)
         };
-        
+
         let file_path = self.current_dir.join(&filename);
-        
+
         if file_path.exists() {
             self.set_temp_message(format!("❌ {}", self.i18n.t("file_exists")));
             return Ok(());
@@ -699,39 +713,44 @@ impl App {
         fs::write(&file_path, template)?;
 
         let mut cmd = Command::new("sops");
-        cmd.arg("-e")
-           .arg("-i");
-        
+        cmd.arg("-e").arg("-i");
+
         // Usar JSON como entrada y convertir al formato deseado
         match ext {
             "yaml" => {
-                cmd.arg("--input-type").arg("json")
-                   .arg("--output-type").arg("yaml");
-            },
+                cmd.arg("--input-type")
+                    .arg("json")
+                    .arg("--output-type")
+                    .arg("yaml");
+            }
             "json" => {
-                cmd.arg("--input-type").arg("json")
-                   .arg("--output-type").arg("json");
-            },
+                cmd.arg("--input-type")
+                    .arg("json")
+                    .arg("--output-type")
+                    .arg("json");
+            }
             "env" => {
-                cmd.arg("--input-type").arg("json")
-                   .arg("--output-type").arg("dotenv");
-            },
+                cmd.arg("--input-type")
+                    .arg("json")
+                    .arg("--output-type")
+                    .arg("dotenv");
+            }
             "ini" => {
-                cmd.arg("--input-type").arg("json")
-                   .arg("--output-type").arg("ini");
-            },
-            _ => {},
+                cmd.arg("--input-type")
+                    .arg("json")
+                    .arg("--output-type")
+                    .arg("ini");
+            }
+            _ => {}
         };
-        
-        cmd.current_dir(&self.current_dir)
-           .arg(&filename);  // Usar solo el nombre del archivo, no la ruta completa
+
+        cmd.current_dir(&self.current_dir).arg(&filename); // Usar solo el nombre del archivo, no la ruta completa
 
         // Asegurar que SOPS encuentre las llaves age
-        let age_key_file = std::env::var("SOPS_AGE_KEY_FILE")
-            .unwrap_or_else(|_| {
-                let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
-                format!("{}/.config/sops/age/keys.txt", home)
-            });
+        let age_key_file = std::env::var("SOPS_AGE_KEY_FILE").unwrap_or_else(|_| {
+            let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
+            format!("{}/.config/sops/age/keys.txt", home)
+        });
         cmd.env("SOPS_AGE_KEY_FILE", age_key_file);
 
         let output = cmd.output()?;
@@ -746,7 +765,7 @@ impl App {
         self.files = Self::list_files(&self.current_dir)?;
         self.new_file_name_buffer.clear();
         self.set_temp_message(format!("✓ {}", self.i18n.t("file_created")));
-        
+
         Ok(())
     }
 
@@ -762,15 +781,17 @@ impl App {
                 } else {
                     fs::remove_file(&path)?;
                 }
-                
+
                 self.files = Self::list_files(&self.current_dir)?;
-                if self.file_list_state.selected().unwrap_or(0) >= self.files.len() && !self.files.is_empty() {
+                if self.file_list_state.selected().unwrap_or(0) >= self.files.len()
+                    && !self.files.is_empty()
+                {
                     self.file_list_state.select(Some(self.files.len() - 1));
                 }
                 self.set_temp_message(self.i18n.t("file_deleted").to_string());
             }
         }
-        
+
         Ok(())
     }
 
@@ -810,7 +831,9 @@ impl App {
                         self.selected_key_index = self.auto_detect_key();
                     }
 
-                    let key = self.selected_key_index.and_then(|i| self.age_keys.get(i).map(|k| k.key.as_str()));
+                    let key = self
+                        .selected_key_index
+                        .and_then(|i| self.age_keys.get(i).map(|k| k.key.as_str()));
                     match decrypt_and_parse(&path, key) {
                         Ok(secrets) => {
                             self.secrets = secrets;
@@ -820,24 +843,45 @@ impl App {
                             }
                         }
                         Err(_) => {
-                            let matching_keys: Vec<String> = self.age_keys
+                            let matching_keys: Vec<String> = self
+                                .age_keys
                                 .iter()
                                 .enumerate()
                                 .filter_map(|(i, k)| {
                                     if let Some(pub_key) = &k.public_key {
                                         if self.file_recipients.contains(pub_key) {
-                                            return Some(format!("#{} {}", i + 1, k.comment.as_ref().unwrap_or(&self.i18n.t("unnamed").to_string())));
+                                            return Some(format!(
+                                                "#{} {}",
+                                                i + 1,
+                                                k.comment
+                                                    .as_ref()
+                                                    .unwrap_or(&self.i18n.t("unnamed").to_string())
+                                            ));
                                         }
                                     }
                                     None
                                 })
                                 .collect();
 
-                            let file_name = path.file_name().and_then(|n| n.to_str()).unwrap_or("?");
+                            let file_name =
+                                path.file_name().and_then(|n| n.to_str()).unwrap_or("?");
                             let msg = if matching_keys.is_empty() {
-                                format!("{} {}: {}. {}: {}", self.i18n.t("error_no_key_match"), file_name, self.i18n.t("error_no_key_match"), self.i18n.t("recipients"), self.file_recipients.join(", "))
+                                format!(
+                                    "{} {}: {}. {}: {}",
+                                    self.i18n.t("error_no_key_match"),
+                                    file_name,
+                                    self.i18n.t("error_no_key_match"),
+                                    self.i18n.t("recipients"),
+                                    self.file_recipients.join(", ")
+                                )
                             } else {
-                                format!("✓ {}: {}: {}. {}", file_name, self.i18n.t("available_keys"), matching_keys.join(", "), self.i18n.t("press_k"))
+                                format!(
+                                    "✓ {}: {}: {}. {}",
+                                    file_name,
+                                    self.i18n.t("available_keys"),
+                                    matching_keys.join(", "),
+                                    self.i18n.t("press_k")
+                                )
                             };
                             self.error_message = Some(msg);
                         }
@@ -944,13 +988,42 @@ impl App {
             if let Some(&real_idx) = filtered.get(idx) {
                 self.secrets.remove(real_idx);
                 self.is_modified = true;
-                if self.table_state.selected().unwrap_or(0) >= self.secrets.len() && !self.secrets.is_empty() {
+                if self.table_state.selected().unwrap_or(0) >= self.secrets.len()
+                    && !self.secrets.is_empty()
+                {
                     self.table_state.select(Some(self.secrets.len() - 1));
                 }
                 self.set_temp_message(self.i18n.t("deleted").to_string());
             }
         }
         self.input_mode = InputMode::Secrets;
+    }
+
+    /// Verifica si un valor necesita ser entrecomillado en .env/.ini
+    fn needs_quoting(value: &str) -> bool {
+        value.contains('#')       // Comentario en .env y .ini
+            || value.contains(';') // Comentario en .ini
+            || value.contains('\n')
+            || value.contains('\r')
+            || value.starts_with(' ')
+            || value.ends_with(' ')
+            || (value.contains(' ') && !value.starts_with('"') && !value.ends_with('"'))
+    }
+
+    /// Entrecomilla y escapa un valor para .env/.ini
+    fn quote_env_value(value: &str) -> String {
+        if Self::needs_quoting(value) {
+            // Escapar backslashes y comillas dobles
+            let escaped = value
+                .replace('\\', r"\\")
+                .replace('"', r#"\""#)
+                .replace('\n', r"\n")
+                .replace('\r', r"\r")
+                .replace('\t', r"\t");
+            format!("\"{}\"", escaped)
+        } else {
+            value.to_string()
+        }
     }
 
     pub fn save_changes(&mut self) -> Result<()> {
@@ -960,7 +1033,7 @@ impl App {
 
             let ext = file_path.extension().and_then(|s| s.to_str());
             let file_name = file_path.file_name().and_then(|s| s.to_str()).unwrap_or("");
-            
+
             // Detectar formato por nombre de archivo o extensión
             let format = if file_name == ".env" || ext == Some("env") {
                 "env"
@@ -968,18 +1041,18 @@ impl App {
                 "ini"
             } else if ext == Some("yaml") || ext == Some("yml") {
                 "yaml"
-            } else if ext == Some("json") {
-                "json"
             } else {
-                "json" // default
+                "json" // default for json and unknown
             };
-            
+
             // Para ENV e INI, convertir a JSON para SOPS y luego convertir de vuelta
             let content = if format == "env" {
                 // Crear JSON para que SOPS lo maneje correctamente
                 let mut json_obj = serde_json::Map::new();
                 for (k, v) in &self.secrets {
-                    json_obj.insert(k.clone(), Value::String(v.clone()));
+                    // Entrecomillar valores con caracteres especiales
+                    let quoted_value = Self::quote_env_value(v);
+                    json_obj.insert(k.clone(), Value::String(quoted_value));
                 }
                 let json_value = Value::Object(json_obj);
                 serde_json::to_string_pretty(&json_value)?
@@ -988,8 +1061,10 @@ impl App {
                 let mut json_obj = serde_json::Map::new();
                 let mut default_section = serde_json::Map::new();
                 for (k, v) in &self.secrets {
-                    let clean_key = k.split('.').last().unwrap_or(k);
-                    default_section.insert(clean_key.to_string(), Value::String(v.clone()));
+                    let clean_key = k.split('.').next_back().unwrap_or(k);
+                    // Entrecomillar valores con caracteres especiales
+                    let quoted_value = Self::quote_env_value(v);
+                    default_section.insert(clean_key.to_string(), Value::String(quoted_value));
                 }
                 json_obj.insert("DEFAULT".to_string(), Value::Object(default_section));
                 let json_value = Value::Object(json_obj);
@@ -1004,11 +1079,12 @@ impl App {
                     for (i, k) in keys.iter().enumerate() {
                         if i == keys.len() - 1 {
                             // Si el valor está entre comillas, forzar como string
-                            let json_value = if value.len() >= 2 && 
-                                              ((value.starts_with('"') && value.ends_with('"')) || 
-                                               (value.starts_with('\'') && value.ends_with('\''))) {
+                            let json_value = if value.len() >= 2
+                                && ((value.starts_with('"') && value.ends_with('"'))
+                                    || (value.starts_with('\'') && value.ends_with('\'')))
+                            {
                                 // Quitar las comillas y guardar como string
-                                let unquoted = &value[1..value.len()-1];
+                                let unquoted = &value[1..value.len() - 1];
                                 Value::String(unquoted.to_string())
                             } else if value == "true" || value == "false" {
                                 Value::Bool(value == "true")
@@ -1026,9 +1102,12 @@ impl App {
                             current_map.insert(k.to_string(), json_value);
                         } else {
                             if !current_map.contains_key(*k) {
-                                current_map.insert(k.to_string(), Value::Object(serde_json::Map::new()));
+                                current_map
+                                    .insert(k.to_string(), Value::Object(serde_json::Map::new()));
                             }
-                            let next_map = current_map.get_mut(*k).and_then(|v| v.as_object_mut())
+                            let next_map = current_map
+                                .get_mut(*k)
+                                .and_then(|v| v.as_object_mut())
                                 .context("Expected object in nested structure")?;
                             current_map = next_map;
                         }
@@ -1047,11 +1126,12 @@ impl App {
                     for (i, k) in keys.iter().enumerate() {
                         if i == keys.len() - 1 {
                             // Si el valor está entre comillas, forzar como string
-                            let json_value = if value.len() >= 2 && 
-                                              ((value.starts_with('"') && value.ends_with('"')) || 
-                                               (value.starts_with('\'') && value.ends_with('\''))) {
+                            let json_value = if value.len() >= 2
+                                && ((value.starts_with('"') && value.ends_with('"'))
+                                    || (value.starts_with('\'') && value.ends_with('\'')))
+                            {
                                 // Quitar las comillas y guardar como string
-                                let unquoted = &value[1..value.len()-1];
+                                let unquoted = &value[1..value.len() - 1];
                                 Value::String(unquoted.to_string())
                             } else if value == "true" || value == "false" {
                                 Value::Bool(value == "true")
@@ -1069,9 +1149,12 @@ impl App {
                             current_map.insert(k.to_string(), json_value);
                         } else {
                             if !current_map.contains_key(*k) {
-                                current_map.insert(k.to_string(), Value::Object(serde_json::Map::new()));
+                                current_map
+                                    .insert(k.to_string(), Value::Object(serde_json::Map::new()));
                             }
-                            let next_map = current_map.get_mut(*k).and_then(|v| v.as_object_mut())
+                            let next_map = current_map
+                                .get_mut(*k)
+                                .and_then(|v| v.as_object_mut())
                                 .context("Expected object in nested structure")?;
                             current_map = next_map;
                         }
@@ -1084,7 +1167,9 @@ impl App {
 
             fs::write(file_path, content)?;
 
-            let key = self.selected_key_index.and_then(|i| self.age_keys.get(i).map(|k| k.key.as_str()));
+            let key = self
+                .selected_key_index
+                .and_then(|i| self.age_keys.get(i).map(|k| k.key.as_str()));
             let mut sops_dir = file_path.parent();
             while let Some(dir) = sops_dir {
                 if dir.join(".sops.yaml").exists() {
@@ -1096,41 +1181,46 @@ impl App {
             let work_dir = sops_dir.unwrap_or_else(|| file_path.parent().unwrap_or(Path::new(".")));
 
             let mut cmd = Command::new("sops");
-            cmd.arg("--encrypt")
-               .arg("-i");  // In-place para mantener recipients
-            
+            cmd.arg("--encrypt").arg("-i"); // In-place para mantener recipients
+
             // Para ENV e INI, usar JSON como formato intermedio
             match format {
                 "yaml" => {
-                    cmd.arg("--input-type").arg("json")
-                       .arg("--output-type").arg("yaml");
-                },
+                    cmd.arg("--input-type")
+                        .arg("json")
+                        .arg("--output-type")
+                        .arg("yaml");
+                }
                 "env" => {
-                    cmd.arg("--input-type").arg("json")
-                       .arg("--output-type").arg("dotenv");
-                },
+                    cmd.arg("--input-type")
+                        .arg("json")
+                        .arg("--output-type")
+                        .arg("dotenv");
+                }
                 "ini" => {
-                    cmd.arg("--input-type").arg("json")
-                       .arg("--output-type").arg("ini");
-                },
+                    cmd.arg("--input-type")
+                        .arg("json")
+                        .arg("--output-type")
+                        .arg("ini");
+                }
                 _ => {
-                    cmd.arg("--input-type").arg("json")
-                       .arg("--output-type").arg("json");
-                },
+                    cmd.arg("--input-type")
+                        .arg("json")
+                        .arg("--output-type")
+                        .arg("json");
+                }
             };
-            
-            cmd.arg(file_path)
-               .current_dir(work_dir);
+
+            cmd.arg(file_path).current_dir(work_dir);
 
             if let Some(k) = key {
                 cmd.env("SOPS_AGE_KEY", k);
             } else {
                 // Asegurar que SOPS encuentre las llaves age
-                let age_key_file = std::env::var("SOPS_AGE_KEY_FILE")
-                    .unwrap_or_else(|_| {
-                        let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
-                        format!("{}/.config/sops/age/keys.txt", home)
-                    });
+                let age_key_file = std::env::var("SOPS_AGE_KEY_FILE").unwrap_or_else(|_| {
+                    let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
+                    format!("{}/.config/sops/age/keys.txt", home)
+                });
                 cmd.env("SOPS_AGE_KEY_FILE", age_key_file);
             }
 
@@ -1145,7 +1235,10 @@ impl App {
                         for entry in entries.flatten() {
                             let path = entry.path();
                             if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
-                                if name.contains(".tmp") && name.contains(file_path.file_name().unwrap().to_str().unwrap()) {
+                                if name.contains(".tmp")
+                                    && name
+                                        .contains(file_path.file_name().unwrap().to_str().unwrap())
+                                {
                                     fs::remove_file(&path).ok();
                                 }
                             }
@@ -1155,7 +1248,7 @@ impl App {
 
                 self.is_modified = false;
                 self.set_temp_message(self.i18n.t("saved").to_string());
-                
+
                 // Recargar el archivo para actualizar encrypted_keys
                 if let Some(file_path) = &self.file_path.clone() {
                     self.encrypted_keys = get_encrypted_keys(file_path).unwrap_or_default();
@@ -1163,7 +1256,11 @@ impl App {
             } else {
                 fs::copy(&backup_file, file_path)?;
                 fs::remove_file(&backup_file).ok();
-                anyhow::bail!("{}: {}", self.i18n.t("error_encrypt"), String::from_utf8_lossy(&output.stderr));
+                anyhow::bail!(
+                    "{}: {}",
+                    self.i18n.t("error_encrypt"),
+                    String::from_utf8_lossy(&output.stderr)
+                );
             }
         }
         Ok(())
