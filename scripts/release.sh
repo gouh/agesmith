@@ -44,6 +44,7 @@ echo -e "${GREEN}✓${NC} New version: ${YELLOW}$NEW_VERSION${NC}"
 # Build binaries
 echo ""
 echo -e "${BLUE}Step 2: Building binaries for all platforms...${NC}"
+make clean
 ./scripts/build-release.sh
 
 # Commit version bump
