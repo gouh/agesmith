@@ -90,7 +90,7 @@ docs/
 → Check [Roadmap](ROADMAP.md)
 
 **...report a bug**
-→ Open an [Issue](https://github.com/yourusername/agesmith/issues)
+→ Open an [Issue](https://github.com/gouh/agesmith/issues)
 
 ## 📝 Documentation Standards
 
@@ -166,7 +166,7 @@ Found an error or want to improve the docs?
 
 <div align="center">
 
-**Need help?** Open an [issue](https://github.com/yourusername/agesmith/issues) or start a [discussion](https://github.com/yourusername/agesmith/discussions)
+**Need help?** Open an [issue](https://github.com/gouh/agesmith/issues) or start a [discussion](https://github.com/gouh/agesmith/discussions)
 
 [⬆ Back to Top](#agesmith-documentation)
 

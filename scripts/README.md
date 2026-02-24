@@ -7,7 +7,7 @@ This directory contains installation scripts for AgeSmith.
 ### Universal Script (Linux/macOS)
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/yourusername/agesmith/main/scripts/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/gouh/agesmith/main/scripts/install.sh | bash
 ```
 
 This script will:
@@ -19,20 +19,20 @@ This script will:
 ### Custom Install Directory
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/yourusername/agesmith/main/scripts/install.sh | INSTALL_DIR=/usr/local/bin bash
+curl -sSL https://raw.githubusercontent.com/gouh/agesmith/main/scripts/install.sh | INSTALL_DIR=/usr/local/bin bash
 ```
 
 ### Specific Version
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/yourusername/agesmith/main/scripts/install.sh | VERSION=v0.1.0 bash
+curl -sSL https://raw.githubusercontent.com/gouh/agesmith/main/scripts/install.sh | VERSION=v0.1.0 bash
 ```
 
 ## Manual Installation
 
 ### 1. Download Binary
 
-Go to [Releases](https://github.com/yourusername/agesmith/releases) and download the binary for your platform:
+Go to [Releases](https://github.com/gouh/agesmith/releases) and download the binary for your platform:
 
 - **Linux**: `agesmith-{version}-x86_64-unknown-linux-gnu`
 - **macOS Intel**: `agesmith-{version}-x86_64-apple-darwin`

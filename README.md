@@ -113,7 +113,7 @@ age-keygen -o ~/.config/sops/age/keys.txt
 
 **Linux/macOS:**
 ```bash
-curl -sSL https://raw.githubusercontent.com/yourusername/agesmith/main/scripts/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/gouh/agesmith/main/scripts/install.sh | bash
 ```
 
 This will automatically:
@@ -126,7 +126,7 @@ This will automatically:
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/agesmith.git
+git clone https://github.com/gouh/agesmith.git
 cd agesmith
 
 # Build and install
@@ -140,7 +140,7 @@ See [Makefile Documentation](docs/MAKEFILE.md) for all available commands.
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/agesmith.git
+git clone https://github.com/gouh/agesmith.git
 cd agesmith
 
 # Build release version
@@ -151,7 +151,7 @@ cargo build --release
 
 ### Manual Installation
 
-1. Download the binary for your platform from [Releases](https://github.com/yourusername/agesmith/releases)
+1. Download the binary for your platform from [Releases](https://github.com/gouh/agesmith/releases)
 2. Verify the checksum (see [Installation Guide](scripts/README.md))
 3. Make it executable: `chmod +x agesmith-*`
 4. Move to PATH: `sudo mv agesmith-* /usr/local/bin/agesmith`
@@ -352,7 +352,7 @@ Contributions are welcome! Here's how you can help:
 
 ```bash
 # Clone and build
-git clone https://github.com/yourusername/agesmith.git
+git clone https://github.com/gouh/agesmith.git
 cd agesmith
 make build
 
@@ -389,8 +389,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 📧 Contact
 
-- **Issues**: [GitHub Issues](https://github.com/yourusername/agesmith/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/yourusername/agesmith/discussions)
+- **Issues**: [GitHub Issues](https://github.com/gouh/agesmith/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/gouh/agesmith/discussions)
 
 ---
 
