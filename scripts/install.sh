@@ -4,7 +4,7 @@
 
 set -e
 
-REPO="yourusername/agesmith"
+REPO="gouh/agesmith"
 INSTALL_DIR="${INSTALL_DIR:-$HOME/.local/bin}"
 BINARY_NAME="agesmith"
 
