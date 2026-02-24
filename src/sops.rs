@@ -9,6 +9,30 @@ pub struct AgeKey {
     pub public_key: Option<String>,
 }
 
+fn create_age_key(keys_path: &PathBuf) -> Result<()> {
+    if let Some(parent) = keys_path.parent() {
+        fs::create_dir_all(parent)?;
+    }
+    
+    let output = Command::new("age-keygen")
+        .arg("-o")
+        .arg(keys_path)
+        .output()
+        .context("No se pudo ejecutar age-keygen. ¿Está instalado?")?;
+    
+    if !output.status.success() {
+        anyhow::bail!("age-keygen falló: {}", String::from_utf8_lossy(&output.stderr));
+    }
+    
+    Ok(())
+}
+
+pub fn create_age_key_file() -> Result<()> {
+    let home = env::var("HOME").context("HOME no está definido")?;
+    let keys_path = PathBuf::from(home).join(".config/sops/age/keys.txt");
+    create_age_key(&keys_path)
+}
+
 pub fn load_age_keys() -> Result<Vec<AgeKey>> {
     let home = env::var("HOME").context("HOME no está definido")?;
     let keys_path = PathBuf::from(home).join(".config/sops/age/keys.txt");
@@ -134,7 +158,13 @@ pub fn flatten_json(prefix: &str, value: &Value, result: &mut Vec<(String, Strin
             }
         }
         _ => {
-            result.push((prefix.to_string(), value.to_string().trim_matches('"').to_string()));
+            let str_value = value.to_string().trim_matches('"').to_string();
+            // Desescapar comillas y barras invertidas
+            let unescaped = str_value
+                .replace("\\\"", "\"")
+                .replace("\\'", "'")
+                .replace("\\\\", "\\");
+            result.push((prefix.to_string(), unescaped));
         }
     }
 }
@@ -229,6 +259,20 @@ pub fn decrypt_and_parse(file_path: &PathBuf, age_key: Option<&str>) -> Result<V
     let mut secrets = Vec::new();
     flatten_json("", &json, &mut secrets);
     secrets.retain(|(k, _)| !k.starts_with("sops."));
+    
+    // Limpiar prefijos DEFAULT. de archivos INI
+    let ext = file_path.extension().and_then(|s| s.to_str());
+    let file_name = file_path.file_name().and_then(|s| s.to_str()).unwrap_or("");
+    let is_ini = file_name == ".ini" || ext == Some("ini");
+    
+    if is_ini {
+        secrets = secrets.into_iter()
+            .map(|(k, v)| {
+                let clean_key = k.strip_prefix("DEFAULT.").unwrap_or(&k).to_string();
+                (clean_key, v)
+            })
+            .collect();
+    }
     
     Ok(secrets)
 }

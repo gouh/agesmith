@@ -28,6 +28,7 @@ pub fn handle_key_event(app: &mut App, key: KeyEvent) -> Result<bool> {
         InputMode::Settings => handle_settings_keys(app, key),
         InputMode::ManagingKeys => handle_managing_keys_keys(app, key),
         InputMode::ConfirmingKeyDeletion => handle_confirming_key_deletion_keys(app, key),
+        InputMode::ConfirmingKeyCreation => handle_confirming_key_creation_keys(app, key),
         InputMode::CreatingFolder => handle_creating_folder_keys(app, key),
         InputMode::RenamingFile => handle_renaming_file_keys(app, key),
         InputMode::ConfirmingFileDeletion => handle_confirming_file_deletion_keys(app, key),
@@ -118,7 +119,6 @@ fn handle_secrets_keys(app: &mut App, key: KeyEvent) -> Result<bool> {
         KeyCode::Char('c') => app.copy_selected_value(),
         KeyCode::Char('C') => app.copy_selected_key(),
         KeyCode::Char('z') => app.open_value_viewer(),
-        KeyCode::Char('g') => app.input_mode = InputMode::Generating,
         KeyCode::Char('e') => app.edit_secret(),
         KeyCode::Char('n') => app.add_secret(),
         KeyCode::Char('d') => app.delete_secret(),
@@ -283,6 +283,20 @@ fn handle_editing_keys(app: &mut App, key: KeyEvent) -> Result<bool> {
                 app.editing_value_buffer.len()
             };
         }
+        KeyCode::Char('g') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+            // Solo si estamos editando el valor (field 1)
+            if app.editing_field == 1 {
+                // Generar directamente sin abrir modal
+                let result = crate::generator::generate_password(16, true, true);
+                app.editing_value_buffer = result.clone();
+                app.cursor_position = app.editing_value_buffer.len();
+                
+                if let Some(clipboard) = &mut app.clipboard {
+                    let _ = clipboard.set_text(result.clone());
+                }
+                app.set_temp_message("✓ Contraseña generada y copiada".to_string());
+            }
+        }
         KeyCode::Enter => {
             if let Some(idx) = app.table_state.selected() {
                 let filtered = app.filtered_secrets();
@@ -325,6 +339,20 @@ fn handle_adding_secret_keys(app: &mut App, key: KeyEvent) -> Result<bool> {
                 app.editing_value_buffer.len()
             };
         }
+        KeyCode::Char('g') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+            // Solo si estamos editando el valor (field 1)
+            if app.editing_field == 1 {
+                // Generar directamente sin abrir modal
+                let result = crate::generator::generate_password(16, true, true);
+                app.editing_value_buffer = result.clone();
+                app.cursor_position = app.editing_value_buffer.len();
+                
+                if let Some(clipboard) = &mut app.clipboard {
+                    let _ = clipboard.set_text(result.clone());
+                }
+                app.set_temp_message("✓ Contraseña generada y copiada".to_string());
+            }
+        }
         KeyCode::Enter => {
             if !app.editing_key_buffer.is_empty() {
                 app.secrets.push((
@@ -338,6 +366,8 @@ fn handle_adding_secret_keys(app: &mut App, key: KeyEvent) -> Result<bool> {
                 app.editing_value_buffer.clear();
                 app.cursor_position = 0;
                 app.editing_field = 0;
+                // Ocultar valores automáticamente después de agregar
+                app.show_values = false;
                 app.input_mode = InputMode::Secrets;
             } else {
                 app.set_temp_message(app.i18n.t("error_empty_key").to_string());
@@ -662,10 +692,13 @@ fn handle_creating_secret_file_keys(app: &mut App, key: KeyEvent) -> Result<bool
             app.input_mode = InputMode::Explorer;
         }
         KeyCode::Enter => {
-            if let Err(e) = app.create_encrypted_file() {
-                app.set_temp_message(format!("❌ Error: {}", e));
+            // Ir al selector de llaves SOPS
+            app.selected_sops_keys = vec![false; app.age_keys.len()];
+            if !app.age_keys.is_empty() {
+                app.selected_sops_keys[0] = true;
             }
-            app.input_mode = InputMode::Explorer;
+            app.key_list_state.select(Some(0));
+            app.input_mode = InputMode::SelectingSopsKeys;
         }
         KeyCode::Backspace => {
             app.new_file_name_buffer.pop();
@@ -694,8 +727,8 @@ fn handle_selecting_file_format_keys(app: &mut App, key: KeyEvent) -> Result<boo
             }
         }
         KeyCode::Enter => {
+            // Ir a pedir nombre del archivo
             app.input_mode = InputMode::CreatingSecretFile;
-            app.new_file_name_buffer.clear();
         }
         _ => {}
     }
@@ -732,12 +765,17 @@ fn handle_selecting_sops_keys_keys(app: &mut App, key: KeyEvent) -> Result<bool>
                     *checked = true;
                 }
                 
-                // Si es Enter, crear el config
+                // Si es Enter, crear el config y el archivo
                 if key.code == KeyCode::Enter {
                     if let Err(e) = app.create_sops_config() {
                         app.set_temp_message(format!("❌ Error: {}", e));
+                        app.input_mode = InputMode::Explorer;
+                    } else if let Err(e) = app.create_encrypted_file() {
+                        app.set_temp_message(format!("❌ Error: {}", e));
+                        app.input_mode = InputMode::Explorer;
+                    } else {
+                        app.input_mode = InputMode::Explorer;
                     }
-                    app.input_mode = InputMode::Explorer;
                 }
             }
         }
@@ -781,6 +819,25 @@ fn handle_editing_sops_config_keys(app: &mut App, key: KeyEvent) -> Result<bool>
             if app.cursor_position < app.edit_buffer.len() {
                 app.cursor_position += 1;
             }
+        }
+        _ => {}
+    }
+    Ok(false)
+}
+
+fn handle_confirming_key_creation_keys(app: &mut App, key: KeyEvent) -> Result<bool> {
+    match key.code {
+        KeyCode::Char('y') | KeyCode::Char('s') => {
+            if let Err(e) = crate::sops::create_age_key_file() {
+                app.set_temp_message(format!("❌ Error: {}", e));
+            } else {
+                app.age_keys = crate::sops::load_age_keys()?;
+                app.set_temp_message(app.i18n.t("key_created").to_string());
+            }
+            app.input_mode = InputMode::Explorer;
+        }
+        KeyCode::Char('n') | KeyCode::Esc => {
+            app.input_mode = InputMode::Explorer;
         }
         _ => {}
     }

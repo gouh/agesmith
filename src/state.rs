@@ -22,6 +22,7 @@ pub enum InputMode {
     Editing,
     Confirming,
     ConfirmingKeyDeletion,
+    ConfirmingKeyCreation,
     Help,
     ViewingValue,
     AddingSecret,
@@ -238,13 +239,23 @@ impl App {
             _ => return,
         };
         
+        // Poner el valor generado en el buffer de edición
+        self.editing_value_buffer = result.clone();
+        self.cursor_position = self.editing_value_buffer.len();
+        
         if let Some(clipboard) = &mut self.clipboard {
             if clipboard.set_text(result.clone()).is_ok() {
                 self.set_temp_message(format!("{}: {}", self.i18n.t("generated"), result));
                 self.clipboard_timestamp = Some(Instant::now());
             }
         }
-        self.input_mode = InputMode::Secrets;
+        
+        // Volver al modo de edición/agregado
+        if self.table_state.selected().is_some() {
+            self.input_mode = InputMode::Editing;
+        } else {
+            self.input_mode = InputMode::AddingSecret;
+        }
     }
 
     pub fn clear_expired_message(&mut self) {
@@ -415,23 +426,46 @@ impl App {
         let sops_file = self.current_dir.join(".sops.yaml");
         
         if sops_file.exists() {
-            // Permitir editar el archivo existente
-            self.edit_buffer = fs::read_to_string(&sops_file)?;
-            self.cursor_position = self.edit_buffer.len();
-            self.input_mode = InputMode::EditingSopsConfig;
+            // Abrir con editor externo
+            self.open_file_in_editor(&sops_file)?;
+            self.files = Self::list_files(&self.current_dir)?;
             return Ok(());
         }
 
         if self.age_keys.is_empty() {
-            self.set_temp_message(self.i18n.t("no_keys").to_string());
+            self.input_mode = InputMode::ConfirmingKeyCreation;
             return Ok(());
         }
 
-        // Mostrar selector de templates
-        self.selected_sops_template = 0;
-        self.input_mode = InputMode::SelectingSopsTemplate;
+        // Mostrar selector de formato de archivo
+        self.selected_format = 0;
+        self.new_file_name_buffer.clear();
+        self.input_mode = InputMode::SelectingFileFormat;
         
         Ok(())
+    }
+
+    pub fn open_file_in_editor(&self, file_path: &PathBuf) -> Result<()> {
+        use std::process::Command;
+        
+        // Intentar editores en orden de preferencia
+        let editors = ["nano", "vim", "vi"];
+        
+        for editor in &editors {
+            if Command::new("which")
+                .arg(editor)
+                .output()
+                .map(|o| o.status.success())
+                .unwrap_or(false)
+            {
+                Command::new(editor)
+                    .arg(file_path)
+                    .status()?;
+                return Ok(());
+            }
+        }
+        
+        anyhow::bail!("No se encontró ningún editor (nano, vim, vi)")
     }
 
     pub fn create_sops_config(&mut self) -> Result<()> {
@@ -449,37 +483,27 @@ impl App {
             return Ok(());
         }
 
-        let age_keys = public_keys.join(",\n      ");
+        let age_keys = public_keys.join(",\n        ");
         
-        // Generar template según selección
-        let config_content = match self.selected_sops_template {
-            0 => {
-                // Simple: todos los archivos
-                format!("creation_rules:\n  - path_regex: .*\n    age: >\n      {}\n", age_keys)
-            }
-            1 => {
-                // Por tipo de archivo
-                format!(
-                    "creation_rules:\n  - path_regex: \\.yaml$\n    age: >\n      {}\n  - path_regex: \\.json$\n    age: >\n      {}\n  - path_regex: \\.env$\n    age: >\n      {}\n  - path_regex: \\.ini$\n    age: >\n      {}\n",
-                    age_keys, age_keys, age_keys, age_keys
-                )
-            }
-            2 => {
-                // Con encrypted_regex (solo passwords y keys)
-                format!(
-                    "creation_rules:\n  - path_regex: .*\n    encrypted_regex: '^(password|.*[Kk]ey|.*[Ss]ecret|.*[Tt]oken)$'\n    age: >\n      {}\n",
-                    age_keys
-                )
-            }
-            3 => {
-                // Kubernetes secrets
-                format!(
-                    "creation_rules:\n  - path_regex: .*\\.yaml$\n    encrypted_regex: '^(data|stringData)$'\n    age: >\n      {}\n",
-                    age_keys
-                )
-            }
-            _ => format!("creation_rules:\n  - path_regex: .*\n    age: >\n      {}\n", age_keys),
+        // Obtener nombre del archivo
+        let formats = ["env", "json", "yaml", "ini"];
+        let ext = formats[self.selected_format];
+        
+        let filename = if self.new_file_name_buffer.is_empty() {
+            format!("secrets.{}", ext)
+        } else if self.new_file_name_buffer.ends_with(&format!(".{}", ext)) {
+            self.new_file_name_buffer.clone()
+        } else {
+            format!("{}.{}", self.new_file_name_buffer, ext)
         };
+
+        // Crear regex que coincida con el archivo en cualquier ubicación
+        let filename_regex = filename.replace(".", "\\.");
+
+        let config_content = format!(
+            "# SOPS configuration for {}\ncreation_rules:\n  - path_regex: (^|/){}$\n    encrypted_regex: '^(password|passwd|pass|secret|key|token|api[_-]?key|private[_-]?key|access[_-]?key|auth|credential|database[_-]?url|.*[Ss]ecret.*|.*[Kk]ey.*|.*[Tt]oken.*)$'\n    age: >\n      {}\n",
+            filename, filename_regex, age_keys
+        );
 
         fs::write(&sops_file, config_content)?;
         self.files = Self::list_files(&self.current_dir)?;
@@ -644,19 +668,12 @@ impl App {
     }
 
     pub fn create_encrypted_file(&mut self) -> Result<()> {
-        // Verificar que existe .sops.yaml
-        let sops_file = self.current_dir.join(".sops.yaml");
-        if !sops_file.exists() {
-            self.set_temp_message(format!("❌ {}", self.i18n.t("sops_not_initialized")));
-            return Ok(());
-        }
-
-        let formats = ["yaml", "json", "env", "ini"];
+        let formats = ["env", "json", "yaml", "ini"];
         let ext = formats[self.selected_format];
         
-        // Si el buffer está vacío o es solo ".", usar solo la extensión
-        let filename = if self.new_file_name_buffer.is_empty() || self.new_file_name_buffer == "." {
-            format!(".{}", ext)
+        // Si el buffer está vacío, usar "secrets" como nombre por defecto
+        let filename = if self.new_file_name_buffer.is_empty() {
+            format!("secrets.{}", ext)
         } else if self.new_file_name_buffer.starts_with('.') {
             // Si ya empieza con punto, no agregar extensión
             self.new_file_name_buffer.clone()
@@ -675,8 +692,7 @@ impl App {
 
         // Crear plantilla según formato
         let template = match ext {
-            "env" => "example_key=example_value\n",
-            "ini" => "[config]\nexample_key=example_value\n",
+            "ini" => r#"{"DEFAULT": {"example_key": "example_value"}}"#,
             _ => r#"{"example_key": "example_value"}"#,
         };
 
@@ -686,7 +702,7 @@ impl App {
         cmd.arg("-e")
            .arg("-i");
         
-        // Especificar tipo de entrada y salida según extensión
+        // Usar JSON como entrada y convertir al formato deseado
         match ext {
             "yaml" => {
                 cmd.arg("--input-type").arg("json")
@@ -697,11 +713,11 @@ impl App {
                    .arg("--output-type").arg("json");
             },
             "env" => {
-                cmd.arg("--input-type").arg("dotenv")
+                cmd.arg("--input-type").arg("json")
                    .arg("--output-type").arg("dotenv");
             },
             "ini" => {
-                cmd.arg("--input-type").arg("ini")
+                cmd.arg("--input-type").arg("json")
                    .arg("--output-type").arg("ini");
             },
             _ => {},
@@ -958,24 +974,27 @@ impl App {
                 "json" // default
             };
             
-            // Para ENV e INI, escribir en formato plano
+            // Para ENV e INI, convertir a JSON para SOPS y luego convertir de vuelta
             let content = if format == "env" {
-                // Formato dotenv: KEY=value
-                self.secrets.iter()
-                    .map(|(k, v)| format!("{}={}", k, v))
-                    .collect::<Vec<_>>()
-                    .join("\n")
+                // Crear JSON para que SOPS lo maneje correctamente
+                let mut json_obj = serde_json::Map::new();
+                for (k, v) in &self.secrets {
+                    json_obj.insert(k.clone(), Value::String(v.clone()));
+                }
+                let json_value = Value::Object(json_obj);
+                serde_json::to_string_pretty(&json_value)?
             } else if format == "ini" {
-                // Formato INI: key=value (limpiar prefijos DEFAULT)
-                self.secrets.iter()
-                    .map(|(k, v)| {
-                        // Extraer solo la última parte de la llave (después del último punto)
-                        let clean_key = k.split('.').last().unwrap_or(k);
-                        format!("{}={}", clean_key, v)
-                    })
-                    .collect::<Vec<_>>()
-                    .join("\n")
-            } else {
+                // Para INI, crear estructura con sección DEFAULT
+                let mut json_obj = serde_json::Map::new();
+                let mut default_section = serde_json::Map::new();
+                for (k, v) in &self.secrets {
+                    let clean_key = k.split('.').last().unwrap_or(k);
+                    default_section.insert(clean_key.to_string(), Value::String(v.clone()));
+                }
+                json_obj.insert("DEFAULT".to_string(), Value::Object(default_section));
+                let json_value = Value::Object(json_obj);
+                serde_json::to_string_pretty(&json_value)?
+            } else if format == "yaml" {
                 // Para YAML/JSON, generar JSON estructurado
                 let mut json_obj = serde_json::Map::new();
 
@@ -984,7 +1003,70 @@ impl App {
                     let mut current_map = &mut json_obj;
                     for (i, k) in keys.iter().enumerate() {
                         if i == keys.len() - 1 {
-                            current_map.insert(k.to_string(), Value::String(value.clone()));
+                            // Si el valor está entre comillas, forzar como string
+                            let json_value = if value.len() >= 2 && 
+                                              ((value.starts_with('"') && value.ends_with('"')) || 
+                                               (value.starts_with('\'') && value.ends_with('\''))) {
+                                // Quitar las comillas y guardar como string
+                                let unquoted = &value[1..value.len()-1];
+                                Value::String(unquoted.to_string())
+                            } else if value == "true" || value == "false" {
+                                Value::Bool(value == "true")
+                            } else if let Ok(num) = value.parse::<i64>() {
+                                Value::Number(num.into())
+                            } else if let Ok(num) = value.parse::<f64>() {
+                                serde_json::Number::from_f64(num)
+                                    .map(Value::Number)
+                                    .unwrap_or_else(|| Value::String(value.clone()))
+                            } else if value == "null" {
+                                Value::Null
+                            } else {
+                                Value::String(value.clone())
+                            };
+                            current_map.insert(k.to_string(), json_value);
+                        } else {
+                            if !current_map.contains_key(*k) {
+                                current_map.insert(k.to_string(), Value::Object(serde_json::Map::new()));
+                            }
+                            let next_map = current_map.get_mut(*k).and_then(|v| v.as_object_mut())
+                                .context("Expected object in nested structure")?;
+                            current_map = next_map;
+                        }
+                    }
+                }
+
+                let json_value = Value::Object(json_obj);
+                serde_json::to_string_pretty(&json_value)?
+            } else {
+                // Para JSON, generar JSON estructurado con detección de tipos
+                let mut json_obj = serde_json::Map::new();
+
+                for (key, value) in &self.secrets {
+                    let keys: Vec<&str> = key.split('.').collect();
+                    let mut current_map = &mut json_obj;
+                    for (i, k) in keys.iter().enumerate() {
+                        if i == keys.len() - 1 {
+                            // Si el valor está entre comillas, forzar como string
+                            let json_value = if value.len() >= 2 && 
+                                              ((value.starts_with('"') && value.ends_with('"')) || 
+                                               (value.starts_with('\'') && value.ends_with('\''))) {
+                                // Quitar las comillas y guardar como string
+                                let unquoted = &value[1..value.len()-1];
+                                Value::String(unquoted.to_string())
+                            } else if value == "true" || value == "false" {
+                                Value::Bool(value == "true")
+                            } else if let Ok(num) = value.parse::<i64>() {
+                                Value::Number(num.into())
+                            } else if let Ok(num) = value.parse::<f64>() {
+                                serde_json::Number::from_f64(num)
+                                    .map(Value::Number)
+                                    .unwrap_or_else(|| Value::String(value.clone()))
+                            } else if value == "null" {
+                                Value::Null
+                            } else {
+                                Value::String(value.clone())
+                            };
+                            current_map.insert(k.to_string(), json_value);
                         } else {
                             if !current_map.contains_key(*k) {
                                 current_map.insert(k.to_string(), Value::Object(serde_json::Map::new()));
@@ -1017,18 +1099,18 @@ impl App {
             cmd.arg("--encrypt")
                .arg("-i");  // In-place para mantener recipients
             
-            // Usar el mismo formato detectado anteriormente
+            // Para ENV e INI, usar JSON como formato intermedio
             match format {
                 "yaml" => {
                     cmd.arg("--input-type").arg("json")
                        .arg("--output-type").arg("yaml");
                 },
                 "env" => {
-                    cmd.arg("--input-type").arg("dotenv")
+                    cmd.arg("--input-type").arg("json")
                        .arg("--output-type").arg("dotenv");
                 },
                 "ini" => {
-                    cmd.arg("--input-type").arg("ini")
+                    cmd.arg("--input-type").arg("json")
                        .arg("--output-type").arg("ini");
                 },
                 _ => {
@@ -1073,6 +1155,11 @@ impl App {
 
                 self.is_modified = false;
                 self.set_temp_message(self.i18n.t("saved").to_string());
+                
+                // Recargar el archivo para actualizar encrypted_keys
+                if let Some(file_path) = &self.file_path.clone() {
+                    self.encrypted_keys = get_encrypted_keys(file_path).unwrap_or_default();
+                }
             } else {
                 fs::copy(&backup_file, file_path)?;
                 fs::remove_file(&backup_file).ok();

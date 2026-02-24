@@ -51,6 +51,13 @@ impl I18n {
         translations.insert("key_deleted", ("✓ Llave eliminada", "✓ Key deleted"));
         translations.insert("key_manager_title", ("🔑 Gestor de Llaves Age", "🔑 Age Key Manager"));
         translations.insert("confirm_key_deletion", ("⚠️ Confirmar Eliminación", "⚠️ Confirm Deletion"));
+        translations.insert("confirm_key_creation", ("✓ Crear Clave Age", "✓ Create Age Key"));
+        translations.insert("no_keys_found", ("No se encontraron claves age", "No age keys found"));
+        translations.insert("keys_file_missing", ("El archivo ~/.config/sops/age/keys.txt no existe.", "The file ~/.config/sops/age/keys.txt does not exist."));
+        translations.insert("create_key_question", ("¿Deseas crear una nueva clave age?", "Do you want to create a new age key?"));
+        translations.insert("create_key_confirm", ("[y/s] Crear clave", "[y/s] Create key"));
+        translations.insert("key_created", ("✓ Clave age creada exitosamente", "✓ Age key created successfully"));
+        translations.insert("confirm_key_creation_help", ("[y/s] Crear | [n/Esc] Cancelar", "[y/s] Create | [n/Esc] Cancel"));
         translations.insert("delete_key_question", ("¿Eliminar la llave", "Delete key"));
         translations.insert("action_irreversible", ("Esta acción no se puede deshacer.", "This action cannot be undone."));
         translations.insert("key_manager_help", ("[↑↓] Navegar | [n] Nueva llave | [d] Eliminar | [Esc] Cerrar", "[↑↓] Navigate | [n] New key | [d] Delete | [Esc] Close"));
@@ -169,13 +176,13 @@ impl I18n {
         translations.insert("editing_sops", ("Editando", "Editing"));
         translations.insert("sops_saved", ("✓ .sops.yaml guardado", "✓ .sops.yaml saved"));
         translations.insert("select_template_title", ("📋 Seleccionar Template SOPS", "📋 Select SOPS Template"));
-        translations.insert("template_simple", ("Simple - Todos los archivos", "Simple - All files"));
-        translations.insert("template_simple_desc", ("Encripta todos los archivos con todas las llaves", "Encrypts all files with all keys"));
-        translations.insert("template_by_type", ("Por tipo - YAML/JSON/ENV/INI", "By type - YAML/JSON/ENV/INI"));
-        translations.insert("template_by_type_desc", ("Reglas específicas por extensión de archivo", "Specific rules per file extension"));
-        translations.insert("template_regex", ("Regex - Solo campos sensibles", "Regex - Sensitive fields only"));
-        translations.insert("template_regex_desc", ("Solo encripta password, key, secret, token", "Only encrypts password, key, secret, token"));
-        translations.insert("template_k8s", ("Kubernetes - Secrets", "Kubernetes - Secrets"));
+        translations.insert("template_simple", ("Por formato - .env/.json/.yaml/.ini", "By format - .env/.json/.yaml/.ini"));
+        translations.insert("template_simple_desc", ("Reglas separadas para cada tipo de archivo", "Separate rules for each file type"));
+        translations.insert("template_by_type", ("Por entorno - dev/staging/prod", "By environment - dev/staging/prod"));
+        translations.insert("template_by_type_desc", ("Diferentes llaves según el entorno", "Different keys based on environment"));
+        translations.insert("template_regex", ("Solo valores sensibles - encrypted_regex", "Sensitive values only - encrypted_regex"));
+        translations.insert("template_regex_desc", ("Encripta password, secret, key, token, etc.", "Encrypts password, secret, key, token, etc."));
+        translations.insert("template_k8s", ("Kubernetes - data/stringData", "Kubernetes - data/stringData"));
         translations.insert("template_k8s_desc", ("Para archivos YAML de Kubernetes (data/stringData)", "For Kubernetes YAML files (data/stringData)"));
         
         // Categorías del footer

@@ -90,6 +90,10 @@ pub fn ui(f: &mut Frame, app: &mut App) {
         render_confirm_key_deletion_modal(f, app);
     }
 
+    if app.input_mode == InputMode::ConfirmingKeyCreation {
+        render_confirm_key_creation_modal(f, app);
+    }
+
     if app.input_mode == InputMode::CreatingFolder {
         render_creating_folder_modal(f, app);
     }
@@ -637,12 +641,18 @@ fn render_edit_modal(f: &mut Frame, app: &mut App) {
         );
     f.render_widget(key_input, chunks[0]);
 
+    let value_title = if app.editing_field == 1 {
+        "Valor | [Ctrl+g] Generar | Usa \"texto\" para forzar string".to_string()
+    } else {
+        app.i18n.t("value_field").to_string()
+    };
+
     let value_input = Paragraph::new(app.editing_value_buffer.as_str())
         .style(Style::default().fg(Color::Rgb(255, 255, 255)).bg(Color::Rgb(38, 50, 56)))
         .block(
             Block::default()
                 .borders(Borders::ALL)
-                .title(app.i18n.t("value_field"))
+                .title(value_title)
                 .title_style(Style::default().fg(Color::Rgb(129, 212, 250)).add_modifier(Modifier::BOLD))
                 .border_style(if app.editing_field == 1 {
                     Style::default().fg(Color::Rgb(102, 187, 106))
@@ -876,6 +886,7 @@ fn get_footer_text(app: &App) -> String {
                 format!("{}{} | {}", app.i18n.t("footer_key_manager"), delete_cmd, app.i18n.t("footer_close"))
             }
             InputMode::ConfirmingKeyDeletion => app.i18n.t("confirm_deletion_help").to_string(),
+            InputMode::ConfirmingKeyCreation => app.i18n.t("confirm_key_creation_help").to_string(),
             InputMode::CreatingFolder => app.i18n.t("footer_create_folder").to_string(),
             InputMode::RenamingFile => app.i18n.t("footer_rename").to_string(),
             InputMode::ConfirmingFileDeletion => app.i18n.t("confirm_deletion_help").to_string(),
@@ -985,6 +996,48 @@ fn render_confirm_key_deletion_modal(f: &mut Frame, app: &App) {
     f.render_widget(confirm, area);
 }
 
+fn render_confirm_key_creation_modal(f: &mut Frame, app: &App) {
+    let area = centered_rect(60, 30, f.area());
+    f.render_widget(Clear, area);
+
+    let text = vec![
+        Line::from(""),
+        Line::from(Span::styled(
+            app.i18n.t("no_keys_found"),
+            Style::default().fg(Color::Rgb(255, 255, 255)).add_modifier(Modifier::BOLD)
+        )),
+        Line::from(""),
+        Line::from(Span::styled(
+            app.i18n.t("keys_file_missing"),
+            Style::default().fg(Color::Rgb(189, 189, 189))
+        )),
+        Line::from(""),
+        Line::from(Span::styled(
+            app.i18n.t("create_key_question"),
+            Style::default().fg(Color::Rgb(255, 255, 255))
+        )),
+        Line::from(""),
+        Line::from(""),
+        Line::from(Span::styled(
+            app.i18n.t("confirm_key_creation_help"),
+            Style::default().fg(Color::Rgb(189, 189, 189))
+        )),
+    ];
+
+    let confirm = Paragraph::new(text)
+        .style(Style::default().fg(Color::Rgb(255, 255, 255)).bg(Color::Rgb(38, 50, 56)))
+        .alignment(Alignment::Center)
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title(app.i18n.t("confirm_key_creation"))
+                .title_style(Style::default().fg(Color::Rgb(102, 187, 106)).add_modifier(Modifier::BOLD))
+                .border_style(Style::default().fg(Color::Rgb(102, 187, 106)))
+        );
+
+    f.render_widget(confirm, area);
+}
+
 fn render_creating_folder_modal(f: &mut Frame, app: &App) {
     let area = centered_rect(50, 15, f.area());
     f.render_widget(Clear, area);
@@ -1076,7 +1129,7 @@ fn render_creating_secret_file_modal(f: &mut Frame, app: &App) {
     let ext = formats[app.selected_format];
     
     let display_text = if app.new_file_name_buffer.is_empty() {
-        format!(".{}", ext)
+        format!("secrets.{}", ext)
     } else if app.new_file_name_buffer.starts_with('.') {
         app.new_file_name_buffer.clone()
     } else if app.new_file_name_buffer.ends_with(&format!(".{}", ext)) {
@@ -1098,14 +1151,14 @@ fn render_creating_secret_file_modal(f: &mut Frame, app: &App) {
 
     let block = Block::default()
         .borders(Borders::ALL)
-        .title(app.i18n.t("new_file_title"))
+        .title("🔐 Crear archivo encriptado con SOPS")
         .title_style(Style::default().fg(Color::Rgb(102, 187, 106)).add_modifier(Modifier::BOLD))
         .border_style(Style::default().fg(Color::Rgb(102, 187, 106)))
         .style(Style::default().bg(Color::Rgb(38, 50, 56)));
     
     f.render_widget(block, area);
 
-    let label = Paragraph::new(format!("{} (Enter para .{})", app.i18n.t("enter_file_name"), ext))
+    let label = Paragraph::new(format!("Nombre del archivo (Enter para secrets.{})", ext))
         .style(Style::default().fg(Color::Rgb(189, 189, 189)));
     f.render_widget(label, chunks[0]);
 
@@ -1124,25 +1177,38 @@ fn render_creating_secret_file_modal(f: &mut Frame, app: &App) {
 }
 
 fn render_selecting_file_format_modal(f: &mut Frame, app: &App) {
-    let area = centered_rect(40, 30, f.area());
+    let area = centered_rect(50, 35, f.area());
     f.render_widget(Clear, area);
 
     let formats = vec![
-        app.i18n.t("format_yaml"),
-        app.i18n.t("format_json"),
-        app.i18n.t("format_env"),
-        app.i18n.t("format_ini"),
+        (app.i18n.t("format_env"), "Environment variables (.env)"),
+        (app.i18n.t("format_json"), "JSON configuration (.json)"),
+        (app.i18n.t("format_yaml"), "YAML configuration (.yaml/.yml)"),
+        (app.i18n.t("format_ini"), "INI configuration (.ini)"),
     ];
+    
     let items: Vec<ListItem> = formats
         .iter()
         .enumerate()
-        .map(|(i, format)| {
+        .map(|(i, (name, desc))| {
             let style = if i == app.selected_format {
                 Style::default().fg(Color::Rgb(102, 187, 106)).add_modifier(Modifier::BOLD)
             } else {
                 Style::default().fg(Color::Rgb(189, 189, 189))
             };
-            ListItem::new(format.to_string()).style(style)
+            
+            let content = vec![
+                Line::from(vec![
+                    Span::styled(if i == app.selected_format { "▶ " } else { "  " }, style),
+                    Span::styled(*name, style),
+                ]),
+                Line::from(vec![
+                    Span::styled("    ", style),
+                    Span::styled(*desc, Style::default().fg(Color::Rgb(150, 150, 150))),
+                ]),
+            ];
+            
+            ListItem::new(content).style(style)
         })
         .collect();
 
@@ -1150,7 +1216,7 @@ fn render_selecting_file_format_modal(f: &mut Frame, app: &App) {
         .block(
             Block::default()
                 .borders(Borders::ALL)
-                .title(app.i18n.t("select_format_title"))
+                .title("📄 Seleccionar formato de archivo para SOPS")
                 .title_style(Style::default().fg(Color::Rgb(102, 187, 106)).add_modifier(Modifier::BOLD))
                 .border_style(Style::default().fg(Color::Rgb(102, 187, 106)))
         )
